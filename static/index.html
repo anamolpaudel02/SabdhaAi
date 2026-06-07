@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SabdaAI — Nepali Language Safety Shield</title>
+    <meta name="description" content="Real-time Nepali comment moderation powered by Gemini AI. Classify comments as Normal, Offensive, or Hateful instantly.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+    <!-- Ambient background orbs -->
+    <div class="bg-canvas">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+    </div>
+
+    <div class="wrap">
+
+        <!-- ── HEADER ── -->
+        <header class="header">
+            <div class="brand">
+                <div class="brand-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="brand-name">Sabda<span class="ai">AI</span></div>
+                    <div class="brand-sub">Nepali Language Safety Shield</div>
+                </div>
+            </div>
+
+            <div id="status-badge" class="status-pill checking">
+                <span class="dot"></span>
+                <span class="status-label">Checking status...</span>
+            </div>
+        </header>
+
+        <!-- ── MAIN GRID ── -->
+        <main class="grid">
+
+            <!-- LEFT: input panel -->
+            <section class="panel">
+                <div class="panel-head">
+                    <div class="panel-title">Moderate a Comment</div>
+                    <div class="panel-desc">Paste any Nepali comment to classify it in real-time</div>
+                </div>
+
+                <!-- Tabs -->
+                <div class="tabs-row">
+                    <button class="tab on" onclick="switchTab('single', this)">Single Analysis</button>
+                    <button class="tab" onclick="switchTab('preset', this)">Quick Presets</button>
+                </div>
+
+                <!-- Single input -->
+                <div id="tab-single" class="tp on">
+                    <form id="analyze-form" style="display:contents">
+                        <div>
+                            <label class="field-label" for="comment-input">Comment text</label>
+                            <textarea id="comment-input"
+                                placeholder="प्रतिक्रिया लेख्नुहोस्... (e.g., यो भिडियो धेरै राम्रो लाग्यो!)"
+                                maxlength="500"
+                                required></textarea>
+                            <div class="ctr"><span id="char-count">0</span> / 500</div>
+                        </div>
+
+                        <button type="submit" id="submit-btn" class="btn-submit">
+                            <svg class="send-icon lbl" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/>
+                            </svg>
+                            <span class="lbl">Analyze Comment</span>
+                            <span class="spinner"></span>
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Presets -->
+                <div id="tab-preset" class="tp">
+                    <p class="preset-hint">Click any example to load it into the analyzer and test instantly.</p>
+                    <div class="preset-stack">
+                        <div class="pcard" onclick="load('यो सामग्री अत्यन्तै ज्ञानवर्धक छ, धेरै धेरै धन्यवाद!')">
+                            <span class="pcard-lbl n">Normal</span>
+                            <p class="pcard-txt">यो सामग्री अत्यन्तै ज्ञानवर्धक छ, धेरै धेरै धन्यवाद!</p>
+                        </div>
+                        <div class="pcard" onclick="load('शुभ बिहानी, सबैको दिन शुभ रहोस्। हर हर महादेव।')">
+                            <span class="pcard-lbl n">Normal</span>
+                            <p class="pcard-txt">शुभ बिहानी, सबैको दिन शुभ रहोस्। हर हर महादेव।</p>
+                        </div>
+                        <div class="pcard" onclick="load('यो मुजी भिडियो हेरेर मेरो समय खेर गयो, के बनाएको यस्तो गधा जस्तो!')">
+                            <span class="pcard-lbl o">Offensive</span>
+                            <p class="pcard-txt">यो मुजी भिडियो हेरेर मेरो समय खेर गयो, के बनाएको यस्तो गधा जस्तो!</p>
+                        </div>
+                        <div class="pcard" onclick="load('कस्तो नराम्रो मुख हानेको साला फटाहा खाते!')">
+                            <span class="pcard-lbl o">Offensive</span>
+                            <p class="pcard-txt">कस्तो नराम्रो मुख हानेको साला फटाहा खाते!</p>
+                        </div>
+                        <div class="pcard" onclick="load('यो जातका मान्छेहरू यस्तै हुन्, यिनीहरूलाई नेपालबाट लखेट्नु पर्छ, सखाप पार्नु पर्छ!')">
+                            <span class="pcard-lbl h">Hateful</span>
+                            <p class="pcard-txt">यो जातका मान्छेहरू यस्तै हुन्, यिनीहरूलाई नेपालबाट लखेट्नु पर्छ, सखाप पार्नु पर्छ!</p>
+                        </div>
+                        <div class="pcard" onclick="load('तँलाई घरबाट थुतेर मार्छु म, अब तेरो दिन गन्ती सुरु भयो!')">
+                            <span class="pcard-lbl h">Hateful</span>
+                            <p class="pcard-txt">तँलाई घरबाट थुतेर मार्छु म, अब तेरो दिन गन्ती सुरु भयो!</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- RIGHT: analytics + feed -->
+            <section class="panel">
+                <div class="panel-head">
+                    <div class="r-head">
+                        <div class="panel-title">Analytics &amp; Live Feed</div>
+                        <button class="clear-btn" onclick="clearAll()">Clear</button>
+                    </div>
+
+                    <div class="stats">
+                        <div class="scard">
+                            <div class="snum" id="stat-total">0</div>
+                            <div class="slbl">Total</div>
+                        </div>
+                        <div class="scard sn">
+                            <div class="snum" id="stat-normal">0</div>
+                            <div class="slbl">Normal</div>
+                        </div>
+                        <div class="scard so">
+                            <div class="snum" id="stat-offensive">0</div>
+                            <div class="slbl">Offensive</div>
+                        </div>
+                        <div class="scard sh">
+                            <div class="snum" id="stat-hateful">0</div>
+                            <div class="slbl">Hateful</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="feed-wrap" id="feed-wrap">
+                    <div class="empty" id="empty-state">
+                        <div class="empty-ring">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a1.526 1.526 0 011.037-.443 48.282 48.282 0 005.68-.494c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z"/>
+                            </svg>
+                        </div>
+                        <p class="empty-t">No results yet</p>
+                        <p class="empty-s">Paste a Nepali comment on the left or click a quick preset to see the classifier in action.</p>
+                    </div>
+                    <div id="results"></div>
+                </div>
+            </section>
+
+        </main>
+
+        <footer class="footer">
+            <span>&copy; SabdaAI &mdash; </span>
+         
+        </footer>
+
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
