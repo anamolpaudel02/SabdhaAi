@@ -1,0 +1,10 @@
+there are the below things that we will focus to add on in this project:
+    1.Token Highlighting: 
+    Highlights the exact words that caused the AI to make its decision
+    2.Romanized the words
+    3.CSV:
+       Allowing users to upload a massive list of text all at once and instantly seeing the results in visual charts.
+    4. Browser extension
+       A mini-app that sits in your internet browser (like Chrome) and cleans up your feed in real-time.
+    5. Feedback Loop 
+       A way for users to correct the AI when it makes a mistake, making the AI smarter over time.
