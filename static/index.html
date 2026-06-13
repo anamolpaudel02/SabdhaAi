@@ -55,6 +55,7 @@
                 <div class="tabs-row">
                     <button class="tab on" onclick="switchTab('single', this)">Single Analysis</button>
                     <button class="tab" onclick="switchTab('preset', this)">Quick Presets</button>
+                    <button class="tab" onclick="switchTab('csv', this)">CSV Upload</button>
                 </div>
 
                 <!-- Single input -->
@@ -107,6 +108,31 @@
                             <span class="pcard-lbl h">Hateful</span>
                             <p class="pcard-txt">तँलाई घरबाट थुतेर मार्छु म, अब तेरो दिन गन्ती सुरु भयो!</p>
                         </div>
+                    </div>
+                </div>
+
+                <!-- CSV tab -->
+                <div id="tab-csv" class="tp">
+                    <p class="preset-hint">Upload a CSV file containing comments to analyze them in a batch and view visualization charts.</p>
+                    <div class="csv-upload-box" id="csv-drop-zone">
+                        <svg class="csv-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
+                        </svg>
+                        <span class="csv-drag-lbl">Drag & drop CSV file or click to browse</span>
+                        <input type="file" id="csv-file-input" accept=".csv" style="display: none;">
+                    </div>
+                    <div id="csv-info" style="display:none">
+                        <div class="csv-meta">
+                            <span id="csv-filename" class="csv-filename-txt">filename.csv</span>
+                            <span id="csv-rowcount" class="csv-rowcount-txt">0 rows detected</span>
+                        </div>
+                        <button type="button" id="csv-process-btn" class="btn-submit">
+                            <svg class="send-icon lbl" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+                            </svg>
+                            <span class="lbl">Process Batch & Show Charts</span>
+                            <span class="spinner"></span>
+                        </button>
                     </div>
                 </div>
             </section>
@@ -162,6 +188,74 @@
 
     </div>
 
+    <!-- CSV Results Modal -->
+    <div id="csv-modal" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-header">
+                <div class="modal-title-wrap">
+                    <h2 class="modal-title">Batch Analysis Dashboard</h2>
+                    <p class="modal-subtitle">Results for <span id="modal-filename">document.csv</span> (<span id="modal-total-count">0</span> items)</p>
+                </div>
+                <button class="modal-close" onclick="closeCsvModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <!-- Charts and Stats Grid -->
+                <div class="modal-charts-grid">
+                    <div class="chart-container">
+                        <h3 class="chart-title">Classification Distribution</h3>
+                        <div class="canvas-wrap">
+                            <canvas id="chart-doughnut"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <h3 class="chart-title">Confidence & Labels Breakdown</h3>
+                        <div class="canvas-wrap">
+                            <canvas id="chart-bar"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <!-- Actions bar -->
+                <div class="table-actions">
+                    <div class="search-wrap">
+                        <input type="text" id="modal-search" placeholder="Filter by comment text..." oninput="filterCsvTable()">
+                        <select id="modal-filter-label" onchange="filterCsvTable()">
+                            <option value="all">All Labels</option>
+                            <option value="normal">Normal</option>
+                            <option value="offensive">Offensive</option>
+                            <option value="hateful">Hateful</option>
+                        </select>
+                    </div>
+                    <button class="btn-export" onclick="exportCsvResults()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                        </svg>
+                        Export CSV
+                    </button>
+                </div>
+                <!-- Table Wrap -->
+                <div class="table-wrap">
+                    <table class="csv-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 50px;">#</th>
+                                <th>Comment</th>
+                                <th>Romanized</th>
+                                <th style="width: 120px;">Label</th>
+                                <th style="width: 100px;">Confidence</th>
+                                <th>Reason / Highlights</th>
+                            </tr>
+                        </thead>
+                        <tbody id="csv-table-body">
+                            <!-- Filled dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ChartJS and App logic -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script src="/static/app.js"></script>
 </body>
 </html>

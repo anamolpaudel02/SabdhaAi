@@ -18,6 +18,9 @@ env/
 .idea/
 *.swp
 
+# Application logs / user feedback
+feedback.jsonl
+
 # OS
 .DS_Store
 Thumbs.db

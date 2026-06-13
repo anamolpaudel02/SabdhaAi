@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SabdaAI extension</title>
+    <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+    <header class="header">
+        <div class="brand">
+            <span class="brand-name">Sabda<span class="ai">AI</span></span>
+            <span class="brand-sub">Safety Shield</span>
+        </div>
+        <div id="status-dot" class="dot offline"></div>
+    </header>
+
+    <main class="main">
+        <div class="status-box">
+            <div class="status-lbl">Shield Status</div>
+            <div class="status-val" id="shield-status">Active & Scanning</div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <span class="stat-num" id="stat-scanned">0</span>
+                <span class="stat-lbl">Scanned</span>
+            </div>
+            <div class="stat-card offensive">
+                <span class="stat-num" id="stat-offensive">0</span>
+                <span class="stat-lbl">Offensive</span>
+            </div>
+            <div class="stat-card hateful">
+                <span class="stat-num" id="stat-hateful">0</span>
+                <span class="stat-lbl">Hateful</span>
+            </div>
+        </div>
+
+        <div class="actions">
+            <button id="scan-btn" class="btn-action">Scan Page Now</button>
+            <button id="toggle-shield-btn" class="btn-action secondary">Pause Shield</button>
+        </div>
+    </main>
+
+    <footer class="footer">
+        Connected to http://localhost:8000
+    </footer>
+
+    <script src="popup.js"></script>
+</body>
+</html>
