@@ -4,6 +4,7 @@ import random
 import asyncio
 from typing import Literal
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi.concurrency import run_in_threadpool
@@ -14,6 +15,14 @@ from words import NORMAL_WORDS, OFFENSIVE_WORDS, HATEFUL_WORDS
 load_dotenv()
 
 app = FastAPI(title="SabdaAI")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 class AnalyzeRequest(BaseModel):
     text: str
