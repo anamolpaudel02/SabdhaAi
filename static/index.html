@@ -53,9 +53,10 @@
 
                 <!-- Tabs -->
                 <div class="tabs-row">
-                    <button class="tab on" onclick="switchTab('single', this)">Single Analysis</button>
-                    <button class="tab" onclick="switchTab('preset', this)">Quick Presets</button>
-                    <button class="tab" onclick="switchTab('csv', this)">CSV Upload</button>
+                    <button class="tab on" id="tab-btn-single" onclick="switchTab('single', this)">Single Analysis</button>
+                    <button class="tab" id="tab-btn-preset" onclick="switchTab('preset', this)">Quick Presets</button>
+                    <button class="tab" id="tab-btn-csv" onclick="switchTab('csv', this)">CSV Upload</button>
+                    <button class="tab" id="tab-btn-ocr" onclick="switchTab('ocr', this)">📷 Screenshot</button>
                 </div>
 
                 <!-- Single input -->
@@ -63,20 +64,35 @@
                     <form id="analyze-form" style="display:contents">
                         <div>
                             <label class="field-label" for="comment-input">Comment text</label>
-                            <textarea id="comment-input"
-                                placeholder="प्रतिक्रिया लेख्नुहोस्... (e.g., यो भिडियो धेरै राम्रो लाग्यो!)"
-                                maxlength="500"
-                                required></textarea>
+                            <div class="textarea-wrap">
+                                <textarea id="comment-input"
+                                    placeholder="प्रतिक्रिया लेख्नुहोस्... (e.g., यो भिडियो धेरै राम्रो लाग्यो!)"
+                                    maxlength="500"
+                                    required></textarea>
+                                <!-- Feature 4: Live danger score indicator -->
+                                <div id="danger-bar" class="danger-bar">
+                                    <span id="danger-label" class="danger-label">🟢 Safe</span>
+                                </div>
+                            </div>
                             <div class="ctr"><span id="char-count">0</span> / 500</div>
                         </div>
 
-                        <button type="submit" id="submit-btn" class="btn-submit">
-                            <svg class="send-icon lbl" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/>
-                            </svg>
-                            <span class="lbl">Analyze Comment</span>
-                            <span class="spinner"></span>
-                        </button>
+                        <!-- Feature 4: Paste & Analyze button row -->
+                        <div class="btn-row">
+                            <button type="button" id="paste-btn" class="btn-paste" onclick="pasteAndAnalyze()">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="width:16px;height:16px">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184"/>
+                                </svg>
+                                <span>📋 Paste &amp; Analyze</span>
+                            </button>
+                            <button type="submit" id="submit-btn" class="btn-submit">
+                                <svg class="send-icon lbl" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/>
+                                </svg>
+                                <span class="lbl">Analyze Comment</span>
+                                <span class="spinner"></span>
+                            </button>
+                        </div>
                     </form>
                 </div>
 
@@ -118,7 +134,7 @@
                         <svg class="csv-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
                         </svg>
-                        <span class="csv-drag-lbl">Drag & drop CSV file or click to browse</span>
+                        <span class="csv-drag-lbl">Drag &amp; drop CSV file or click to browse</span>
                         <input type="file" id="csv-file-input" accept=".csv" style="display: none;">
                     </div>
                     <div id="csv-info" style="display:none">
@@ -130,7 +146,39 @@
                             <svg class="send-icon lbl" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
                             </svg>
-                            <span class="lbl">Process Batch & Show Charts</span>
+                            <span class="lbl">Process Batch &amp; Show Charts</span>
+                            <span class="spinner"></span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ── Feature 1: Screenshot OCR tab ── -->
+                <div id="tab-ocr" class="tp">
+                    <p class="preset-hint">Upload a screenshot of a comment section. SabdaAI will extract the text via OCR and analyze each comment automatically.</p>
+                    <div class="csv-upload-box ocr-drop" id="ocr-drop-zone">
+                        <svg class="csv-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                        </svg>
+                        <span class="csv-drag-lbl">Drop a screenshot image or click to browse</span>
+                        <span class="ocr-hint-lbl">Supports PNG, JPG, WEBP</span>
+                        <input type="file" id="ocr-file-input" accept="image/*" style="display: none;">
+                    </div>
+                    <div id="ocr-info" style="display:none">
+                        <div class="csv-meta">
+                            <span id="ocr-filename" class="csv-filename-txt">image.png</span>
+                            <span id="ocr-imgsize" class="csv-rowcount-txt">ready to scan</span>
+                        </div>
+                        <!-- Skeleton loader -->
+                        <div id="ocr-skeleton" style="display:none">
+                            <div class="ocr-skeleton-bar"></div>
+                            <div class="ocr-skeleton-bar" style="width:75%"></div>
+                            <div class="ocr-skeleton-bar" style="width:60%"></div>
+                        </div>
+                        <button type="button" id="ocr-process-btn" class="btn-submit">
+                            <svg class="send-icon lbl" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 3.75H6A2.25 2.25 0 003.75 6v1.5M16.5 3.75H18A2.25 2.25 0 0120.25 6v1.5m0 9V18A2.25 2.25 0 0118 20.25h-1.5m-9 0H6A2.25 2.25 0 013.75 18v-1.5M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            <span class="lbl">🔍 Scan &amp; Analyze Comments</span>
                             <span class="spinner"></span>
                         </button>
                     </div>
@@ -208,10 +256,18 @@
                         </div>
                     </div>
                     <div class="chart-container">
-                        <h3 class="chart-title">Confidence & Labels Breakdown</h3>
+                        <h3 class="chart-title">Confidence &amp; Labels Breakdown</h3>
                         <div class="canvas-wrap">
                             <canvas id="chart-bar"></canvas>
                         </div>
+                    </div>
+                    <!-- Feature 5: Most Flagged Words Chart -->
+                    <div class="chart-container chart-full-width">
+                        <h3 class="chart-title">🚩 Top 10 Most Flagged Trigger Words</h3>
+                        <div class="canvas-wrap" style="height:220px">
+                            <canvas id="chart-flagged-words"></canvas>
+                        </div>
+                        <div id="chart-flagged-empty" class="chart-empty-msg" style="display:none">No flagged trigger words found in this batch.</div>
                     </div>
                 </div>
                 <!-- Actions bar -->

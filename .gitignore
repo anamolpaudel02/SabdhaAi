@@ -1,26 +1,17 @@
-# Python
-__pycache__/
-*.py[cod]
-*.pyo
-*.pyd
-*.so
-
 # Virtual environments
 .venv/
 venv/
-env/
+ENV/
 
-# Environment variables — NEVER commit your API keys!
-.env
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
 
-# IDE / editor
+# Editor configurations
 .vscode/
 .idea/
-*.swp
 
-# Application logs / user feedback
-feedback.jsonl
-
-# OS
-.DS_Store
+# OS files
 Thumbs.db
+.DS_Store

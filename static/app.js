@@ -1,3 +1,9 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// SabdaAI — app.js  (Premium Features v2)
+// Features: OCR, Diff View, Live Danger Score, Paste+Submit,
+//           Flagged Words Chart, Safe-to-Post Verdict
+// ─────────────────────────────────────────────────────────────────────────────
+
 // Counters
 let total = 0, normal = 0, offensive = 0, hateful = 0;
 
@@ -22,8 +28,19 @@ let currentCsvFile = null;
 let batchResults = [];
 let doughnutChart = null;
 let barChart = null;
+let flaggedWordsChart = null;
 
-// Boot
+// ── Feature 3: Live Danger Score keyword sets (client-side) ──────────────────
+const DANGER_HATEFUL = [
+    'मार्छु','काट्छु','मार्ने','काट्ने','मरोस्','सखाप','धोती','भते','मर्स्या','जाठो',
+    'hate','kill','destroy','scum','die'
+];
+const DANGER_OFFENSIVE = [
+    'मुजी','खाते','रन्डी','गधा','मूर्ख','बदमास','फटाहा','साला','कुरूप','धत्','तेरो',
+    'stupid','idiot','vulgar','nonsense'
+];
+
+// ── Boot ─────────────────────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', () => {
     checkStatus();
 
@@ -31,44 +48,108 @@ window.addEventListener('DOMContentLoaded', () => {
         const n = input.value.length;
         ctr.textContent = n;
         ctr.style.color = n >= 450 ? '#fb4d6d' : n >= 350 ? '#fbbf24' : '#4b5a72';
+
+        // Feature 3: update live danger score
+        updateDangerScore(input.value);
     });
 
     if (form) {
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const msg = input.value.trim();
-            if (!msg) return;
-
-            btn.classList.add('loading');
-            btn.disabled = true;
-
-            try {
-                const res = await fetch('/api/analyze', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text: msg })
-                });
-                if (!res.ok) throw new Error('API error');
-                const data = await res.json();
-                data.text = msg;
-                addCard(data);
-                input.value = '';
-                ctr.textContent = '0';
-                ctr.style.color = '#4b5a72';
-            } catch (err) {
-                console.error(err);
-                alert('Backend unreachable. Make sure uvicorn is running.');
-            } finally {
-                btn.classList.remove('loading');
-                btn.disabled = false;
-            }
+            await runAnalysis();
         });
     }
 
     // Initialize CSV upload
     initCsvUpload();
+    // Initialize OCR upload (Feature 1)
+    initOcrUpload();
 });
 
+// ── Feature 3: Live Danger Score ─────────────────────────────────────────────
+function updateDangerScore(text) {
+    const val = text.toLowerCase();
+    const dangerBar = document.getElementById('danger-bar');
+    const dangerLabel = document.getElementById('danger-label');
+    if (!dangerBar || !dangerLabel) return;
+
+    const isHateful = DANGER_HATEFUL.some(w => val.includes(w));
+    const isOffensive = DANGER_OFFENSIVE.some(w => val.includes(w));
+
+    if (!val.trim()) {
+        input.style.background = 'rgba(0,0,0,0.28)';
+        input.style.borderColor = 'var(--border)';
+        input.style.boxShadow = '';
+        dangerBar.className = 'danger-bar';
+        dangerLabel.textContent = '🟢 Safe';
+    } else if (isHateful) {
+        input.style.background = 'rgba(251,77,109,0.07)';
+        input.style.borderColor = 'rgba(251,77,109,0.5)';
+        input.style.boxShadow = '0 0 0 3px rgba(251,77,109,0.12), inset 0 0 30px rgba(251,77,109,0.04)';
+        dangerBar.className = 'danger-bar danger-hateful';
+        dangerLabel.textContent = '🔴 High Danger';
+    } else if (isOffensive) {
+        input.style.background = 'rgba(251,191,36,0.07)';
+        input.style.borderColor = 'rgba(251,191,36,0.5)';
+        input.style.boxShadow = '0 0 0 3px rgba(251,191,36,0.12), inset 0 0 30px rgba(251,191,36,0.04)';
+        dangerBar.className = 'danger-bar danger-offensive';
+        dangerLabel.textContent = '🟡 Caution';
+    } else {
+        input.style.background = 'rgba(0,0,0,0.28)';
+        input.style.borderColor = 'var(--border)';
+        input.style.boxShadow = '';
+        dangerBar.className = 'danger-bar';
+        dangerLabel.textContent = '🟢 Safe';
+    }
+}
+
+// ── Feature 4: Paste & Analyze ───────────────────────────────────────────────
+window.pasteAndAnalyze = async function() {
+    try {
+        const text = await navigator.clipboard.readText();
+        if (!text.trim()) { alert('Clipboard is empty!'); return; }
+        input.value = text.trim();
+        ctr.textContent = input.value.length;
+        updateDangerScore(input.value);
+        await runAnalysis();
+    } catch (err) {
+        // Fallback for browsers that block clipboard without user gesture on http
+        alert('Clipboard access denied. Please paste manually (Ctrl+V) then click Analyze.');
+    }
+};
+
+// ── Core analysis runner ──────────────────────────────────────────────────────
+async function runAnalysis() {
+    const msg = input.value.trim();
+    if (!msg) return;
+
+    btn.classList.add('loading');
+    btn.disabled = true;
+
+    try {
+        const res = await fetch('/api/analyze', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: msg })
+        });
+        if (!res.ok) throw new Error('API error');
+        const data = await res.json();
+        data.text = msg;
+        addCard(data);
+        input.value = '';
+        ctr.textContent = '0';
+        ctr.style.color = '#4b5a72';
+        updateDangerScore('');
+    } catch (err) {
+        console.error(err);
+        alert('Backend unreachable. Make sure uvicorn is running.');
+    } finally {
+        btn.classList.remove('loading');
+        btn.disabled = false;
+    }
+}
+
+// ── Status check ─────────────────────────────────────────────────────────────
 async function checkStatus() {
     try {
         const r = await fetch('/api/status');
@@ -88,7 +169,7 @@ async function checkStatus() {
     }
 }
 
-// Tab switch
+// ── Tab switch ────────────────────────────────────────────────────────────────
 window.switchTab = function(name, el) {
     document.querySelectorAll('.tp').forEach(x => x.classList.remove('on'));
     document.querySelectorAll('.tab').forEach(x => x.classList.remove('on'));
@@ -96,22 +177,23 @@ window.switchTab = function(name, el) {
     el.classList.add('on');
 };
 
-// Load a preset into the textarea
+// ── Load a preset into the textarea ──────────────────────────────────────────
 window.load = function(text) {
     input.value = text;
     ctr.textContent = text.length;
-    switchTab('single', document.querySelectorAll('.tab')[0]);
+    updateDangerScore(text);
+    switchTab('single', document.getElementById('tab-btn-single'));
     input.focus();
 };
 
-// highlight words
+// ── Highlight flagged words ───────────────────────────────────────────────────
 function highlightTokens(text, tokens, labelClass) {
     if (!tokens || tokens.length === 0) return esc(text);
     let escapedText = esc(text);
-    
+
     // Sort by length desc to prevent substring issues
     const sortedTokens = [...tokens].sort((a, b) => b.length - a.length);
-    
+
     for (const token of sortedTokens) {
         if (!token.trim()) continue;
         const escToken = esc(token);
@@ -129,7 +211,58 @@ function escapeRegExp(string) {
     return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-// transliteration map
+// ── Feature 2: Word-level Diff Computation ────────────────────────────────────
+function computeWordDiff(original, cleaned) {
+    const origWords = original.trim().split(/\s+/);
+    const cleanWords = cleaned.trim().split(/\s+/);
+
+    // Build a simple LCS-based diff
+    const m = origWords.length;
+    const n = cleanWords.length;
+    const dp = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
+
+    for (let i = 1; i <= m; i++) {
+        for (let j = 1; j <= n; j++) {
+            if (origWords[i - 1] === cleanWords[j - 1]) {
+                dp[i][j] = dp[i - 1][j - 1] + 1;
+            } else {
+                dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+            }
+        }
+    }
+
+    // Trace back to build diff tokens
+    const diffTokens = [];
+    let i = m, j = n;
+    while (i > 0 || j > 0) {
+        if (i > 0 && j > 0 && origWords[i - 1] === cleanWords[j - 1]) {
+            diffTokens.unshift({ word: origWords[i - 1], type: 'same' });
+            i--; j--;
+        } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
+            diffTokens.unshift({ word: cleanWords[j - 1], type: 'added' });
+            j--;
+        } else {
+            diffTokens.unshift({ word: origWords[i - 1], type: 'removed' });
+            i--;
+        }
+    }
+
+    return diffTokens;
+}
+
+function renderDiffHTML(diffTokens) {
+    return diffTokens.map(token => {
+        if (token.type === 'removed') {
+            return `<del class="diff-removed">${esc(token.word)}</del>`;
+        } else if (token.type === 'added') {
+            return `<ins class="diff-added">${esc(token.word)}</ins>`;
+        } else {
+            return esc(token.word);
+        }
+    }).join(' ');
+}
+
+// ── Transliteration map ───────────────────────────────────────────────────────
 function romanizeNepali(text) {
     const vowels = {
         'अ': 'a', 'आ': 'aa', 'इ': 'i', 'ई': 'ee', 'उ': 'u', 'ऊ': 'oo', 'ऋ': 'ri',
@@ -154,11 +287,11 @@ function romanizeNepali(text) {
     let i = 0;
     while (i < text.length) {
         let char = text[i];
-        
+
         if (consonants[char]) {
             let base = consonants[char];
             let nextChar = text[i + 1];
-            
+
             if (nextChar === halant) {
                 result += base;
                 i += 2;
@@ -197,7 +330,33 @@ window.toggleRoman = function(btn) {
     }
 };
 
-// card rendering
+// ── Feature 6: Safe-to-Post verdict helpers ───────────────────────────────────
+function getVerdict(label) {
+    if (label === 'Normal') {
+        return {
+            cls: 'verdict-safe',
+            icon: '✅',
+            title: 'SAFE TO POST',
+            msg: 'This comment complies with community safety guidelines.'
+        };
+    } else if (label === 'Offensive') {
+        return {
+            cls: 'verdict-warn',
+            icon: '⚠️',
+            title: 'POTENTIAL VIOLATION',
+            msg: 'Contains vulgarity or slang. Use with caution.'
+        };
+    } else {
+        return {
+            cls: 'verdict-danger',
+            icon: '❌',
+            title: 'VIOLATION DETECTED',
+            msg: 'Violates hate speech policies against target groups. Do not post.'
+        };
+    }
+}
+
+// ── Card rendering ────────────────────────────────────────────────────────────
 function addCard(res) {
     total++;
     const lc = res.label.toLowerCase();
@@ -213,12 +372,22 @@ function addCard(res) {
     emptyState.style.display = 'none';
 
     const shortClass = lc === 'normal' ? 'rn' : lc === 'offensive' ? 'ro' : 'rh';
+    const verdict = getVerdict(res.label);
 
     const card = document.createElement('div');
     card.className = `rcard ${shortClass}`;
     card.dataset.text = res.text;
     card.dataset.predicted = res.label;
     card.innerHTML = `
+        <!-- Feature 6: Safe-to-Post Verdict Banner -->
+        <div class="verdict-banner ${verdict.cls}">
+            <span class="verdict-icon">${verdict.icon}</span>
+            <div class="verdict-text">
+                <span class="verdict-title">${verdict.title}</span>
+                <span class="verdict-msg">${verdict.msg}</span>
+            </div>
+        </div>
+
         <div class="rcard-top">
             <span class="rbadge ${shortClass}">${res.label}</span>
             <div class="conf">
@@ -265,7 +434,7 @@ function addCard(res) {
     results.insertBefore(card, results.firstChild);
 }
 
-// feedback & correction loop
+// ── Feedback & correction loop ────────────────────────────────────────────────
 window.toggleFeedbackWidget = function(btn) {
     const parent = btn.parentElement;
     const widget = parent.querySelector('.feedback-widget');
@@ -282,7 +451,7 @@ window.submitFeedback = async function(btn, correctLabel) {
     const card = btn.closest('.rcard');
     const text = card.dataset.text;
     const predicted = card.dataset.predicted;
-    
+
     const choiceButtons = card.querySelectorAll('.choice-btn');
     choiceButtons.forEach(b => b.disabled = true);
 
@@ -297,25 +466,30 @@ window.submitFeedback = async function(btn, correctLabel) {
 
         const widget = card.querySelector('.feedback-widget');
         widget.innerHTML = `<span class="feedback-success">✅ Saved to training loop! Override live.</span>`;
-        
-        // Also update local stats if it changed
+
         if (predicted !== correctLabel) {
             updateStatsAfterCorrection(predicted, correctLabel);
-            // Visually transform card badge
-            const badge = card.querySelector('.rbadge');
-            const fill = card.querySelector('.conf-fill');
             const lc = correctLabel.toLowerCase();
-            const oldLc = predicted.toLowerCase();
-            
             const shortClass = lc === 'normal' ? 'rn' : lc === 'offensive' ? 'ro' : 'rh';
-            
+            const verdict = getVerdict(correctLabel);
+
             card.className = `rcard ${shortClass}`;
-            badge.className = `rbadge ${shortClass}`;
-            badge.textContent = correctLabel;
-            fill.className = `conf-fill ${shortClass}`;
-            fill.style.width = '100%';
-            card.querySelector('.conf span').textContent = '100% confidence';
-            
+            const rbadge = card.querySelector('.rbadge');
+            const fill = card.querySelector('.conf-fill');
+            if (rbadge) { rbadge.className = `rbadge ${shortClass}`; rbadge.textContent = correctLabel; }
+            if (fill) { fill.className = `conf-fill ${shortClass}`; fill.style.width = '100%'; }
+            const confSpan = card.querySelector('.conf span');
+            if (confSpan) confSpan.textContent = '100% confidence';
+
+            // Update verdict banner
+            const banner = card.querySelector('.verdict-banner');
+            if (banner) {
+                banner.className = `verdict-banner ${verdict.cls}`;
+                banner.querySelector('.verdict-icon').textContent = verdict.icon;
+                banner.querySelector('.verdict-title').textContent = verdict.title;
+                banner.querySelector('.verdict-msg').textContent = verdict.msg;
+            }
+
             card.dataset.predicted = correctLabel;
         }
     } catch (err) {
@@ -328,7 +502,7 @@ window.submitFeedback = async function(btn, correctLabel) {
 function updateStatsAfterCorrection(oldLabel, newLabel) {
     const oldLc = oldLabel.toLowerCase();
     const newLc = newLabel.toLowerCase();
-    
+
     if (oldLc === newLc) return;
 
     if (oldLc === 'normal') normal--;
@@ -352,7 +526,7 @@ window.clearAll = function() {
     emptyState.style.display = 'flex';
 };
 
-// batch csv analysis & charts
+// ── CSV Batch Analysis & Charts ───────────────────────────────────────────────
 function initCsvUpload() {
     const dropZone = document.getElementById('csv-drop-zone');
     const fileInput = document.getElementById('csv-file-input');
@@ -395,7 +569,7 @@ function initCsvUpload() {
         }
         currentCsvFile = file;
         csvFilename.textContent = file.name;
-        
+
         const reader = new FileReader();
         reader.onload = function(e) {
             const text = e.target.result;
@@ -408,7 +582,7 @@ function initCsvUpload() {
 
     csvProcessBtn.addEventListener('click', async () => {
         if (parsedTexts.length === 0) return;
-        
+
         csvProcessBtn.classList.add('loading');
         csvProcessBtn.disabled = true;
 
@@ -421,8 +595,6 @@ function initCsvUpload() {
 
             if (!res.ok) throw new Error('API error');
             const data = await res.json();
-            
-            // Open Dashboard Modal with results
             openCsvDashboard(currentCsvFile.name, data.results);
         } catch (err) {
             console.error(err);
@@ -430,6 +602,92 @@ function initCsvUpload() {
         } finally {
             csvProcessBtn.classList.remove('loading');
             csvProcessBtn.disabled = false;
+        }
+    });
+}
+
+// ── Feature 1: Screenshot OCR Upload ─────────────────────────────────────────
+function initOcrUpload() {
+    const dropZone = document.getElementById('ocr-drop-zone');
+    const fileInput = document.getElementById('ocr-file-input');
+    const ocrInfo = document.getElementById('ocr-info');
+    const ocrFilename = document.getElementById('ocr-filename');
+    const ocrImgSize = document.getElementById('ocr-imgsize');
+    const ocrProcessBtn = document.getElementById('ocr-process-btn');
+    const ocrSkeleton = document.getElementById('ocr-skeleton');
+
+    if (!dropZone) return;
+
+    let selectedImageFile = null;
+
+    dropZone.addEventListener('click', () => fileInput.click());
+
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('dragover');
+    });
+
+    dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('dragover');
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+        if (e.dataTransfer.files.length) handleImageFile(e.dataTransfer.files[0]);
+    });
+
+    fileInput.addEventListener('change', () => {
+        if (fileInput.files.length) handleImageFile(fileInput.files[0]);
+    });
+
+    function handleImageFile(file) {
+        if (!file.type.startsWith('image/')) {
+            alert('Please select a valid image file (PNG, JPG, WEBP).');
+            return;
+        }
+        selectedImageFile = file;
+        ocrFilename.textContent = file.name;
+        ocrImgSize.textContent = `${(file.size / 1024).toFixed(1)} KB — ready to scan`;
+        ocrInfo.style.display = 'block';
+    }
+
+    ocrProcessBtn.addEventListener('click', async () => {
+        if (!selectedImageFile) return;
+
+        ocrProcessBtn.classList.add('loading');
+        ocrProcessBtn.disabled = true;
+        if (ocrSkeleton) { ocrSkeleton.style.display = 'block'; }
+
+        try {
+            const formData = new FormData();
+            formData.append('file', selectedImageFile);
+
+            const res = await fetch('/api/analyze-screenshot', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!res.ok) throw new Error('OCR API error');
+            const data = await res.json();
+
+            if (ocrSkeleton) ocrSkeleton.style.display = 'none';
+
+            // Open batch dashboard with extracted results
+            // Build parsedTexts and batchResults for OCR
+            parsedTexts = data.results.map(r => r.text);
+            openCsvDashboard(
+                `📷 ${selectedImageFile.name} (${data.extracted_count} lines extracted)`,
+                data.results,
+                data.ocr_notice
+            );
+        } catch (err) {
+            console.error(err);
+            alert('Failed to process screenshot. Make sure backend is running.');
+            if (ocrSkeleton) ocrSkeleton.style.display = 'none';
+        } finally {
+            ocrProcessBtn.classList.remove('loading');
+            ocrProcessBtn.disabled = false;
         }
     });
 }
@@ -467,7 +725,7 @@ function parseCSV(text) {
     }
 
     let mapped = lines.map(r => r[0] ? r[0].trim() : '').filter(txt => txt.length > 0);
-    
+
     // Check header
     const headers = ['comment', 'text', 'message', 'body', 'content', 'post', 'nepali', 'input', 'pratikriya', 'sabda'];
     if (mapped.length > 0 && headers.includes(mapped[0].toLowerCase())) {
@@ -477,10 +735,10 @@ function parseCSV(text) {
     return mapped;
 }
 
-window.openCsvDashboard = function(filename, results) {
+window.openCsvDashboard = function(filename, results, ocrNotice = null) {
     batchResults = results.map((r, index) => {
         return {
-            text: parsedTexts[index],
+            text: r.text || parsedTexts[index] || '',
             label: r.label,
             confidence: r.confidence,
             reason: r.reason,
@@ -492,6 +750,17 @@ window.openCsvDashboard = function(filename, results) {
     document.getElementById('modal-total-count').textContent = batchResults.length;
     document.getElementById('modal-search').value = '';
     document.getElementById('modal-filter-label').value = 'all';
+
+    // Show OCR notice if applicable
+    let noticeEl = document.getElementById('ocr-modal-notice');
+    if (noticeEl) noticeEl.remove();
+    if (ocrNotice) {
+        noticeEl = document.createElement('div');
+        noticeEl.id = 'ocr-modal-notice';
+        noticeEl.className = 'ocr-notice';
+        noticeEl.innerHTML = `<span>⚠️ ${esc(ocrNotice)}</span>`;
+        document.querySelector('.modal-body').prepend(noticeEl);
+    }
 
     document.getElementById('csv-modal').classList.add('open');
 
@@ -510,7 +779,8 @@ window.renderCsvTable = function(items) {
     items.forEach((item, index) => {
         const tr = document.createElement('tr');
         const badgeClass = item.label.toLowerCase() === 'normal' ? 'rn' : item.label.toLowerCase() === 'offensive' ? 'ro' : 'rh';
-        
+        const verdict = getVerdict(item.label);
+
         const dispText = highlightTokens(item.text, item.highlighted_tokens, item.label.toLowerCase());
         const romanText = romanizeNepali(item.text);
         const highlightsStr = item.highlighted_tokens && item.highlighted_tokens.length > 0
@@ -521,7 +791,10 @@ window.renderCsvTable = function(items) {
             <td>${index + 1}</td>
             <td class="cell-text">${dispText}</td>
             <td class="cell-roman">${esc(romanText)}</td>
-            <td><span class="rbadge ${badgeClass}">${item.label}</span></td>
+            <td>
+                <span class="rbadge ${badgeClass}">${item.label}</span>
+                <span class="table-verdict-badge ${verdict.cls}-sm" title="${verdict.msg}">${verdict.icon}</span>
+            </td>
             <td><span class="conf-pct">${item.confidence}%</span></td>
             <td class="cell-details">
                 <div class="cell-reason">${esc(item.reason)}</div>
@@ -544,6 +817,23 @@ window.filterCsvTable = function() {
 
     renderCsvTable(filtered);
 };
+
+// ── Feature 5: Most Flagged Words Chart ──────────────────────────────────────
+function computeFlaggedWordFrequency(data) {
+    const freq = {};
+    data.forEach(item => {
+        if (item.highlighted_tokens && item.highlighted_tokens.length > 0) {
+            item.highlighted_tokens.forEach(token => {
+                const t = token.trim().toLowerCase();
+                if (t) freq[t] = (freq[t] || 0) + 1;
+            });
+        }
+    });
+    // Sort by frequency descending, take top 10
+    return Object.entries(freq)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10);
+}
 
 function renderCharts(data) {
     const counts = { Normal: 0, Offensive: 0, Hateful: 0 };
@@ -586,7 +876,7 @@ function renderCharts(data) {
         }
     });
 
-    // 2. Bar Chart
+    // 2. Bar Chart (Avg Confidence)
     const ctxBar = document.getElementById('chart-bar').getContext('2d');
     if (barChart) barChart.destroy();
     barChart = new Chart(ctxBar, {
@@ -607,8 +897,7 @@ function renderCharts(data) {
             indexAxis: 'y',
             scales: {
                 x: {
-                    min: 0,
-                    max: 100,
+                    min: 0, max: 100,
                     grid: { color: 'rgba(255,255,255,0.06)' },
                     ticks: { color: '#8b9ab8', font: { family: 'Inter' } }
                 },
@@ -617,11 +906,76 @@ function renderCharts(data) {
                     ticks: { color: '#eef2ff', font: { family: 'Inter', weight: 'bold' } }
                 }
             },
-            plugins: {
-                legend: { display: false }
-            }
+            plugins: { legend: { display: false } }
         }
     });
+
+    // 3. Feature 5: Top 10 Flagged Words Chart
+    const topWords = computeFlaggedWordFrequency(data);
+    const flaggedContainer = document.getElementById('chart-flagged-words');
+    const flaggedEmpty = document.getElementById('chart-flagged-empty');
+
+    if (flaggedWordsChart) flaggedWordsChart.destroy();
+
+    if (topWords.length === 0) {
+        flaggedContainer.style.display = 'none';
+        if (flaggedEmpty) flaggedEmpty.style.display = 'block';
+    } else {
+        flaggedContainer.style.display = 'block';
+        if (flaggedEmpty) flaggedEmpty.style.display = 'none';
+
+        const ctxFlagged = flaggedContainer.getContext('2d');
+
+        // Colour each bar based on danger level
+        const barColors = topWords.map(([word]) => {
+            if (DANGER_HATEFUL.includes(word)) return 'rgba(251, 77, 109, 0.8)';
+            if (DANGER_OFFENSIVE.includes(word)) return 'rgba(251, 191, 36, 0.8)';
+            return 'rgba(139, 154, 184, 0.7)';
+        });
+        const borderColors = topWords.map(([word]) => {
+            if (DANGER_HATEFUL.includes(word)) return '#fb4d6d';
+            if (DANGER_OFFENSIVE.includes(word)) return '#fbbf24';
+            return '#8b9ab8';
+        });
+
+        flaggedWordsChart = new Chart(ctxFlagged, {
+            type: 'bar',
+            data: {
+                labels: topWords.map(([w]) => w),
+                datasets: [{
+                    label: 'Occurrences',
+                    data: topWords.map(([, c]) => c),
+                    backgroundColor: barColors,
+                    borderColor: borderColors,
+                    borderWidth: 1.5,
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                scales: {
+                    x: {
+                        grid: { color: 'rgba(255,255,255,0.06)' },
+                        ticks: { color: '#8b9ab8', font: { family: 'Inter' }, stepSize: 1 }
+                    },
+                    y: {
+                        grid: { display: false },
+                        ticks: { color: '#eef2ff', font: { family: 'Inter', size: 12, weight: '600' } }
+                    }
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: ctx => ` ${ctx.raw} occurrence${ctx.raw !== 1 ? 's' : ''}`
+                        }
+                    }
+                }
+            }
+        });
+    }
 }
 
 window.exportCsvResults = function() {
@@ -645,7 +999,7 @@ window.exportCsvResults = function() {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    
+
     const originalName = currentCsvFile ? currentCsvFile.name.replace('.csv', '') : 'batch';
     link.setAttribute("download", `${originalName}_sabdaai_results.csv`);
     document.body.appendChild(link);
@@ -657,12 +1011,12 @@ function esc(s) {
     return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-// suggest clean rewrites
+// ── Feature 2: Suggest Clean + Diff View ─────────────────────────────────────
 window.suggestClean = async function(btn) {
     const card = btn.closest('.rcard');
     const text = card.dataset.text;
     const panel = card.querySelector('.suggest-clean-panel');
-    
+
     btn.disabled = true;
     const originalContent = btn.innerHTML;
     btn.innerHTML = '<span>✨ Cleaning...</span>';
@@ -677,6 +1031,10 @@ window.suggestClean = async function(btn) {
         if (!res.ok) throw new Error('Failed to get clean suggestion');
         const data = await res.json();
 
+        // Feature 2: Compute word-level diff
+        const diffTokens = computeWordDiff(data.original, data.cleaned);
+        const diffHTML = renderDiffHTML(diffTokens);
+
         panel.style.display = 'block';
         panel.innerHTML = `
             <div class="clean-box">
@@ -685,6 +1043,26 @@ window.suggestClean = async function(btn) {
                     <button class="copy-clean-btn" onclick="copyCleanText(this, ${JSON.stringify(data.cleaned)})">Copy</button>
                 </div>
                 <div class="clean-txt">"${esc(data.cleaned)}"</div>
+
+                <!-- Feature 2: Side-by-side diff view -->
+                <div class="diff-section">
+                    <div class="diff-title">📝 What Changed</div>
+                    <div class="diff-cards">
+                        <div class="diff-card diff-original">
+                            <div class="diff-card-label">Original</div>
+                            <div class="diff-card-body">${renderDiffHTML(
+                                diffTokens.map(t => ({ word: t.word, type: t.type === 'added' ? 'same' : t.type }))
+                            )}</div>
+                        </div>
+                        <div class="diff-card diff-cleaned">
+                            <div class="diff-card-label">Cleaned</div>
+                            <div class="diff-card-body">${renderDiffHTML(
+                                diffTokens.map(t => ({ word: t.word, type: t.type === 'removed' ? 'same' : t.type }))
+                            )}</div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="clean-changes">
                     <strong>Changes:</strong> ${esc(data.changes)}
                 </div>
@@ -714,4 +1092,3 @@ window.copyCleanText = function(btn, text) {
         console.error('Copy failed', err);
     });
 };
-

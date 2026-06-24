@@ -1,18 +1,22 @@
 import os
+import io
+import re
 import json
-import random
 import asyncio
 from typing import Literal
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
-from dotenv import load_dotenv
-from words import NORMAL_WORDS, OFFENSIVE_WORDS, HATEFUL_WORDS
 
-load_dotenv()
+try:
+    from PIL import Image
+    import pytesseract
+    OCR_AVAILABLE = True
+except ImportError:
+    OCR_AVAILABLE = False
 
 app = FastAPI(title="SabdaAI")
 
@@ -24,14 +28,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-class AnalyzeRequest(BaseModel):
-    text: str
-
 class ClassificationResult(BaseModel):
     label: Literal["Normal", "Offensive", "Hateful"]
     confidence: int
     reason: str
     highlighted_tokens: list[str] = []
+
+class AnalyzeRequest(BaseModel):
+    text: str
 
 class AnalyzeBatchRequest(BaseModel):
     texts: list[str]
@@ -41,24 +45,21 @@ class FeedbackRequest(BaseModel):
     predicted: str
     correct: str
 
-# api config
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-use_mock = True
+class SuggestCleanResponse(BaseModel):
+    original: str
+    cleaned: str
+    changes: str
 
-if GEMINI_API_KEY and not GEMINI_API_KEY.startswith("your_") and len(GEMINI_API_KEY) > 10:
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+client = None
+
+if GEMINI_API_KEY:
     try:
         from google import genai
         client = genai.Client(api_key=GEMINI_API_KEY)
-        use_mock = False
-        print("Connected to Gemini API successfully")
-    except Exception as e:
-        print(f"Failed to load Gemini: {e}. Running mock fallback")
-        client = None
-else:
-    print("No GEMINI_API_KEY found, running in mock mode")
-    client = None
+    except Exception:
+        pass
 
-# feedback storage & local cache
 FEEDBACK_FILE = "feedback.jsonl"
 feedback_overrides = {}
 
@@ -74,128 +75,68 @@ def load_feedback_overrides():
                         correct = data.get("correct")
                         if text and correct in ["Normal", "Offensive", "Hateful"]:
                             feedback_overrides[text.lower()] = correct
-            print(f"Loaded {len(feedback_overrides)} feedback overrides.")
-        except Exception as e:
-            print(f"Failed to load feedback overrides: {e}")
+        except Exception:
+            pass
 
 load_feedback_overrides()
-
-def get_mock_label(text: str) -> ClassificationResult:
-    val = text.lower()
-    
-    for word in HATEFUL_WORDS:
-        if word in val:
-            return ClassificationResult(
-                label="Hateful",
-                confidence=random.randint(85, 98),
-                reason=f"Contains threat/slur: '{word}'",
-                highlighted_tokens=[word]
-            )
-            
-    for word in OFFENSIVE_WORDS:
-        if word in val:
-            return ClassificationResult(
-                label="Offensive",
-                confidence=random.randint(75, 95),
-                reason=f"Uses offensive word: '{word}'",
-                highlighted_tokens=[word]
-            )
-            
-    for word in NORMAL_WORDS:
-        if word in val:
-            return ClassificationResult(
-                label="Normal",
-                confidence=random.randint(80, 99),
-                reason="Positive or supportive remark",
-                highlighted_tokens=[word]
-            )
-            
-    if len(text) < 15:
-        return ClassificationResult(
-            label="Normal",
-            confidence=random.randint(70, 90),
-            reason="Short text with clean vocabulary",
-            highlighted_tokens=[]
-        )
-    
-    r = random.random()
-    if r < 0.75:
-        return ClassificationResult(label="Normal", confidence=random.randint(65, 85), reason="No flagged keywords or hostile patterns detected", highlighted_tokens=[])
-    elif r < 0.92:
-        return ClassificationResult(label="Offensive", confidence=random.randint(60, 80), reason="Sentence structure appears slightly rude or aggressive", highlighted_tokens=[])
-    else:
-        return ClassificationResult(label="Hateful", confidence=random.randint(65, 85), reason="Heuristics flagged possible target harassment", highlighted_tokens=[])
 
 def analyze_text_internal(text: str) -> ClassificationResult:
     content = text.strip()
     if not content:
         raise ValueError("Text cannot be empty")
         
-    # Check feedback overrides first
     content_lower = content.lower()
     if content_lower in feedback_overrides:
         corrected_label = feedback_overrides[content_lower]
-        # Highlight words if they are keywords in mock list
-        highlighted = []
-        for word in HATEFUL_WORDS + OFFENSIVE_WORDS + NORMAL_WORDS:
-            if word in content_lower:
-                highlighted.append(word)
         return ClassificationResult(
             label=corrected_label,
             confidence=100,
             reason="User corrected label (feedback loop override)",
-            highlighted_tokens=highlighted
+            highlighted_tokens=[]
         )
         
-    if use_mock or client is None:
-        return get_mock_label(content)
+    if not client:
+        raise RuntimeError("Gemini API key is not configured.")
         
-    try:
-        prompt = (
-            "You are an automated comment moderator for Nepali text. "
-            "Classify this comment into Normal (safe/neutral/polite), "
-            "Offensive (general swearing/slang/rudeness with no specific target), "
-            "or Hateful (harassment, threat, or targeting based on caste/religion/gender/nationality).\n"
-            "Identify the exact words/tokens in the text that caused this classification (especially for Offensive or Hateful).\n"
-            "Output ONLY valid JSON with this exact schema:\n"
-            '{"label": "Normal" | "Offensive" | "Hateful", "confidence": integer 0-100, "reason": "short English reason", "highlighted_tokens": ["word1", "word2"]}'
-            f"\n\nComment to moderate:\n\"{content}\""
-        )
+    prompt = (
+        "You are an automated comment moderator for Nepali text. "
+        "Classify this comment into Normal (safe/neutral/polite), "
+        "Offensive (general swearing/slang/rudeness with no specific target), "
+        "or Hateful (harassment, threat, or targeting based on caste/religion/gender/nationality).\n"
+        "Identify the exact words/tokens in the text that caused this classification (especially for Offensive or Hateful).\n"
+        "Output ONLY valid JSON with this exact schema:\n"
+        '{"label": "Normal" | "Offensive" | "Hateful", "confidence": integer 0-100, "reason": "short English reason", "highlighted_tokens": ["word1", "word2"]}'
+        f"\n\nComment to moderate:\n\"{content}\""
+    )
+    
+    response = client.models.generate_content(
+        model="gemini-1.5-flash",
+        contents=prompt,
+        config={
+            "response_mime_type": "application/json",
+        }
+    )
+    
+    data = json.loads(response.text.strip())
+    lbl = data.get("label", "Normal")
+    if lbl not in ["Normal", "Offensive", "Hateful"]:
+        lbl = "Normal"
         
-        response = client.models.generate_content(
-            model="gemini-1.5-flash",
-            contents=prompt,
-            config={
-                "response_mime_type": "application/json",
-            }
-        )
-        
-        data = json.loads(response.text.strip())
-        
-        lbl = data.get("label", "Normal")
-        if lbl not in ["Normal", "Offensive", "Hateful"]:
-            lbl = "Normal"
-            
-        conf = int(data.get("confidence", 80))
-        conf = max(0, min(100, conf))
-        reason = data.get("reason", "Analysis successful")
-        tokens = data.get("highlighted_tokens", [])
-        if not isinstance(tokens, list):
-            tokens = []
-        tokens = [str(t) for t in tokens]
-        
-        return ClassificationResult(label=lbl, confidence=conf, reason=reason, highlighted_tokens=tokens)
-        
-    except Exception as err:
-        print(f"Gemini API error: {err}. Falling back to mock")
-        return get_mock_label(content)
+    conf = int(data.get("confidence", 80))
+    conf = max(0, min(100, conf))
+    reason = data.get("reason", "Analysis successful")
+    tokens = data.get("highlighted_tokens", [])
+    if not isinstance(tokens, list):
+        tokens = []
+    tokens = [str(t) for t in tokens]
+    
+    return ClassificationResult(label=lbl, confidence=conf, reason=reason, highlighted_tokens=tokens)
 
 @app.get("/api/status")
 def get_status():
     return {
         "status": "ok",
-        "api_configured": not use_mock,
-        "fallback_mode": use_mock
+        "api_configured": client is not None
     }
 
 @app.post("/api/analyze", response_model=ClassificationResult)
@@ -203,7 +144,12 @@ async def analyze(request: AnalyzeRequest):
     content = request.text.strip()
     if not content:
         raise HTTPException(status_code=400, detail="Text cannot be empty")
-    return await run_in_threadpool(analyze_text_internal, content)
+    try:
+        return await run_in_threadpool(analyze_text_internal, content)
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/analyze-batch")
 async def analyze_batch(request: AnalyzeBatchRequest):
@@ -247,67 +193,10 @@ async def submit_feedback(request: FeedbackRequest):
     try:
         with open(FEEDBACK_FILE, "a", encoding="utf-8") as f:
             f.write(json.dumps(feedback_entry, ensure_ascii=False) + "\n")
-        
-        # Update cache
         feedback_overrides[text.lower()] = correct
         return {"status": "success", "message": "Feedback saved and override updated"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to save feedback: {str(e)}")
-
-class SuggestCleanResponse(BaseModel):
-    original: str
-    cleaned: str
-    changes: str
-
-# preset sanitization mapping for testing
-MOCK_CLEAN_RESPONSES = {
-    "यो मुजी भिडियो हेरेर मेरो समय खेर गयो, के बनाएको यस्तो गधा जस्तो!": {
-        "cleaned": "यो भिडियो मेरो लागि त्यति उपयोगी भएन, अर्को पटक अलि स्तरीय बनाउन अनुरोध गर्दछु।",
-        "changes": "Removed profanities 'मुजी' and insults 'गधा जस्तो', replaced with polite feedback on video quality."
-    },
-    "कस्तो नराम्रो मुख हानेको साला फटाहा खाते!": {
-        "cleaned": "कृपया आफ्नो बोली र भाषालाई मर्यादित एवं सभ्य बनाउनुहोला।",
-        "changes": "Removed harsh verbal abuses 'साला', 'फटाहा', 'खाते', replaced with a polite request for decent speech."
-    },
-    "यो जातका मान्छेहरू यस्तै हुन्, यिनीहरूलाई नेपालबाट लखेट्नु पर्छ, सखाप पार्नु पर्छ!": {
-        "cleaned": "सबै वर्ग र समुदायका मानिसहरूसँग मिलेर बस्नुपर्छ र कसैप्रति विभेद वा घृणा फैलाउनु हुँदैन।",
-        "changes": "Removed xenophobia and hate speech targeting specific ethnic groups, replaced with statements supporting harmony and equality."
-    },
-    "तँलाई घरबाट थुतेर मार्छु म, अब तेरो दिन गन्ती सुरु भयो!": {
-        "cleaned": "हाम्रो असमझदारीलाई संवाद, छलफल र कानुनी प्रक्रिया मार्फत समाधान गरौं।",
-        "changes": "Removed targeted physical threats and death threat 'मार्छु', replaced with a proposal for dialogue."
-    }
-}
-
-def get_mock_clean_version(text: str) -> dict:
-    trimmed = text.strip()
-    # Check if we have a match in preset map
-    for key, val in MOCK_CLEAN_RESPONSES.items():
-        if key.lower() in trimmed.lower() or trimmed.lower() in key.lower():
-            return {
-                "original": text,
-                "cleaned": val["cleaned"],
-                "changes": val["changes"]
-            }
-            
-    # fallback string sanitizer
-    cleaned = text
-    replaced_words = []
-    for word in HATEFUL_WORDS + OFFENSIVE_WORDS:
-        if word in cleaned:
-            cleaned = cleaned.replace(word, "*" * len(word))
-            replaced_words.append(word)
-            
-    if replaced_words:
-        changes = f"Sanitized identified offensive/hateful keywords: {', '.join(replaced_words)}."
-    else:
-        changes = "No flagged words found. Refined syntax structure for general politeness."
-        
-    return {
-        "original": text,
-        "cleaned": cleaned,
-        "changes": changes
-    }
 
 @app.post("/api/suggest-clean", response_model=SuggestCleanResponse)
 async def suggest_clean(request: AnalyzeRequest):
@@ -315,9 +204,8 @@ async def suggest_clean(request: AnalyzeRequest):
     if not content:
         raise HTTPException(status_code=400, detail="Text cannot be empty")
         
-    if use_mock or client is None:
-        mock_res = get_mock_clean_version(content)
-        return SuggestCleanResponse(**mock_res)
+    if not client:
+        raise HTTPException(status_code=503, detail="Gemini API key is not configured.")
         
     try:
         prompt = (
@@ -344,9 +232,57 @@ async def suggest_clean(request: AnalyzeRequest):
         
         return SuggestCleanResponse(original=content, cleaned=cleaned, changes=changes)
     except Exception as e:
-        print(f"Gemini suggestion error: {e}. Falling back to mock")
-        mock_res = get_mock_clean_version(content)
-        return SuggestCleanResponse(**mock_res)
+        raise HTTPException(status_code=500, detail=str(e))
+
+def _is_devanagari_or_valid(line):
+    cleaned = line.strip()
+    if len(cleaned) < 3:
+        return False
+    has_devanagari = bool(re.search(r'[\u0900-\u097F]', cleaned))
+    has_latin = bool(re.search(r'[a-zA-Z]{2,}', cleaned))
+    return has_devanagari or has_latin
+
+@app.post("/api/analyze-screenshot")
+async def analyze_screenshot(file: UploadFile = File(...)):
+    if not OCR_AVAILABLE:
+        raise HTTPException(status_code=501, detail="OCR engine dependencies are not installed.")
+        
+    contents = await file.read()
+    try:
+        image = Image.open(io.BytesIO(contents))
+        raw_text = pytesseract.image_to_string(image, lang="nep+eng")
+        lines = raw_text.splitlines()
+        extracted_lines = [l.strip() for l in lines if _is_devanagari_or_valid(l)]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"OCR processing failed: {str(e)}")
+
+    if not extracted_lines:
+        return {"extracted_count": 0, "results": []}
+
+    tasks = [run_in_threadpool(analyze_text_internal, text) for text in extracted_lines]
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    processed = []
+    for i, res in enumerate(results):
+        if isinstance(res, Exception):
+            processed.append({
+                "text": extracted_lines[i],
+                "label": "Normal", "confidence": 0,
+                "reason": f"Error: {str(res)}", "highlighted_tokens": []
+            })
+        else:
+            processed.append({
+                "text": extracted_lines[i],
+                "label": res.label,
+                "confidence": res.confidence,
+                "reason": res.reason,
+                "highlighted_tokens": res.highlighted_tokens
+            })
+
+    return {
+        "extracted_count": len(extracted_lines),
+        "results": processed
+    }
 
 os.makedirs("static", exist_ok=True)
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -354,4 +290,3 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 @app.get("/")
 def home():
     return FileResponse("static/index.html")
-

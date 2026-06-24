@@ -1232,6 +1232,355 @@ mark.tok-hateful {
     line-height: 1.45;
 }
 
+/* ══════════════════════════════════════════════════════════════════════════════
+   PREMIUM FEATURE STYLES — v2
+   Feature 1: Screenshot OCR | Feature 2: Diff View | Feature 3: Danger Score
+   Feature 4: Paste+Submit   | Feature 5: Flagged Words | Feature 6: Verdict
+══════════════════════════════════════════════════════════════════════════════ */
+
+/* ── Feature 4: Button Row (Paste & Analyze) ── */
+.btn-row {
+    display: flex;
+    gap: 10px;
+    align-items: stretch;
+}
+
+.btn-paste {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1.5px solid var(--border);
+    border-radius: var(--r-md);
+    color: var(--text-2);
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.25s var(--ease);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.btn-paste:hover {
+    background: rgba(79, 142, 247, 0.08);
+    border-color: rgba(79, 142, 247, 0.35);
+    color: var(--blue);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px -4px rgba(79, 142, 247, 0.3);
+}
+
+.btn-paste:active {
+    transform: translateY(0);
+}
+
+.btn-row .btn-submit {
+    flex: 1;
+}
+
+/* ── Feature 3: Textarea Wrap + Danger Bar ── */
+.textarea-wrap {
+    position: relative;
+}
+
+textarea {
+    transition: border-color 0.35s var(--ease), box-shadow 0.35s var(--ease), background 0.35s var(--ease);
+}
+
+.danger-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    margin-top: 6px;
+    border-radius: 8px;
+    font-size: 11.5px;
+    font-weight: 600;
+    background: rgba(34, 211, 165, 0.06);
+    border: 1px solid rgba(34, 211, 165, 0.15);
+    color: var(--green);
+    transition: all 0.35s var(--ease);
+}
+
+.danger-bar.danger-offensive {
+    background: rgba(251, 191, 36, 0.08);
+    border-color: rgba(251, 191, 36, 0.25);
+    color: var(--amber);
+    animation: dangerPulse 1.8s ease-in-out infinite;
+}
+
+.danger-bar.danger-hateful {
+    background: rgba(251, 77, 109, 0.1);
+    border-color: rgba(251, 77, 109, 0.3);
+    color: var(--red);
+    animation: dangerPulse 1s ease-in-out infinite;
+}
+
+.danger-label {
+    letter-spacing: 0.2px;
+}
+
+@keyframes dangerPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+/* ── Feature 1: Screenshot OCR Tab ── */
+.ocr-drop {
+    border-color: rgba(155, 114, 247, 0.25);
+}
+
+.ocr-drop:hover, .ocr-drop.dragover {
+    border-color: var(--purple);
+    background: rgba(155, 114, 247, 0.04);
+}
+
+.ocr-drop:hover .csv-icon, .ocr-drop.dragover .csv-icon {
+    color: var(--purple);
+}
+
+.ocr-hint-lbl {
+    font-size: 11px;
+    color: var(--text-3);
+    font-weight: 500;
+    letter-spacing: 0.3px;
+}
+
+/* OCR Skeleton loading animation */
+.ocr-skeleton-bar {
+    height: 12px;
+    background: linear-gradient(90deg,
+        rgba(255,255,255,0.04) 0%,
+        rgba(255,255,255,0.1) 50%,
+        rgba(255,255,255,0.04) 100%
+    );
+    background-size: 200% 100%;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    width: 100%;
+    animation: shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
+
+/* OCR notice in modal */
+.ocr-notice {
+    background: rgba(155, 114, 247, 0.07);
+    border: 1px solid rgba(155, 114, 247, 0.25);
+    border-radius: var(--r-sm);
+    padding: 10px 16px;
+    font-size: 12.5px;
+    color: var(--purple);
+    font-weight: 500;
+    margin-bottom: 4px;
+}
+
+/* ── Feature 6: Safe-to-Post Verdict Banner ── */
+.verdict-banner {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    border-radius: 12px;
+    margin-bottom: 2px;
+    animation: verdictIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes verdictIn {
+    from { opacity: 0; transform: scaleY(0.8); transform-origin: top; }
+    to   { opacity: 1; transform: scaleY(1); }
+}
+
+.verdict-safe {
+    background: linear-gradient(135deg, rgba(34, 211, 165, 0.1) 0%, rgba(34, 211, 165, 0.04) 100%);
+    border: 1.5px solid rgba(34, 211, 165, 0.3);
+    box-shadow: 0 0 20px -8px rgba(34, 211, 165, 0.35);
+}
+
+.verdict-warn {
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.1) 0%, rgba(251, 191, 36, 0.04) 100%);
+    border: 1.5px solid rgba(251, 191, 36, 0.3);
+    box-shadow: 0 0 20px -8px rgba(251, 191, 36, 0.35);
+}
+
+.verdict-danger {
+    background: linear-gradient(135deg, rgba(251, 77, 109, 0.12) 0%, rgba(251, 77, 109, 0.04) 100%);
+    border: 1.5px solid rgba(251, 77, 109, 0.35);
+    box-shadow: 0 0 20px -8px rgba(251, 77, 109, 0.4);
+}
+
+.verdict-icon {
+    font-size: 20px;
+    flex-shrink: 0;
+    line-height: 1;
+}
+
+.verdict-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.verdict-title {
+    font-family: var(--font-display);
+    font-size: 12.5px;
+    font-weight: 800;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+}
+
+.verdict-safe .verdict-title  { color: var(--green); }
+.verdict-warn .verdict-title  { color: var(--amber); }
+.verdict-danger .verdict-title { color: var(--red); }
+
+.verdict-msg {
+    font-size: 11px;
+    color: var(--text-2);
+    font-weight: 400;
+    line-height: 1.4;
+}
+
+/* Table verdict icon badge */
+.table-verdict-badge {
+    display: inline-block;
+    margin-left: 5px;
+    font-size: 13px;
+    cursor: help;
+}
+
+/* ── Feature 2: Diff View ── */
+.diff-section {
+    margin-top: 10px;
+}
+
+.diff-title {
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.7px;
+    color: var(--text-3);
+    margin-bottom: 8px;
+}
+
+.diff-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.diff-card {
+    border-radius: 10px;
+    padding: 10px 13px;
+    font-size: 13px;
+    line-height: 1.65;
+}
+
+.diff-original {
+    background: rgba(251, 77, 109, 0.04);
+    border: 1px solid rgba(251, 77, 109, 0.18);
+}
+
+.diff-cleaned {
+    background: rgba(34, 211, 165, 0.04);
+    border: 1px solid rgba(34, 211, 165, 0.18);
+}
+
+.diff-card-label {
+    font-size: 9.5px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.7px;
+    margin-bottom: 7px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.diff-original .diff-card-label { color: var(--red); }
+.diff-cleaned  .diff-card-label { color: var(--green); }
+
+.diff-card-body {
+    color: var(--text);
+    word-break: break-word;
+}
+
+/* Diff tokens */
+del.diff-removed {
+    background: rgba(251, 77, 109, 0.2);
+    color: var(--red);
+    text-decoration: line-through;
+    text-decoration-color: rgba(251, 77, 109, 0.7);
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-weight: 600;
+    text-decoration-thickness: 2px;
+}
+
+ins.diff-added {
+    background: rgba(34, 211, 165, 0.18);
+    color: var(--green);
+    text-decoration: none;
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-weight: 600;
+}
+
+/* ── Feature 5: Flagged Words Chart ── */
+.chart-full-width {
+    grid-column: 1 / -1;
+}
+
+.chart-empty-msg {
+    text-align: center;
+    font-size: 13px;
+    color: var(--text-3);
+    padding: 30px 0;
+    font-style: italic;
+}
+
+/* ── Tabs row for 4 items ── */
+.tabs-row {
+    display: flex;
+    gap: 4px;
+    background: rgba(0,0,0,0.25);
+    padding: 4px;
+    margin: 18px 24px 16px;
+    border-radius: var(--r-sm);
+    border: 1px solid var(--border);
+    flex-wrap: nowrap;
+    overflow-x: auto;
+}
+
+.tabs-row::-webkit-scrollbar { height: 3px; }
+.tabs-row::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 4px; }
+
+.tab {
+    flex: 1;
+    min-width: 80px;
+    padding: 9px 8px;
+    background: transparent;
+    border: none;
+    font-family: var(--font-body);
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--text-3);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.25s var(--ease);
+    letter-spacing: 0.1px;
+    white-space: nowrap;
+}
+
+/* Modal charts grid update for 3 charts */
+.modal-charts-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
 /* ── responsive ── */
 @media (max-width: 1024px) {
     .grid { grid-template-columns: 1fr; }
@@ -1241,6 +1590,8 @@ mark.tok-hateful {
     .modal-charts-grid { grid-template-columns: 1fr; }
     .table-actions { flex-direction: column; align-items: stretch; }
     .search-wrap { max-width: 100%; }
+    .diff-cards { grid-template-columns: 1fr; }
+    .btn-row { flex-direction: column; }
 }
 
 @media (max-width: 600px) {
@@ -1249,4 +1600,3 @@ mark.tok-hateful {
     .stats { grid-template-columns: repeat(2, 1fr); }
     .footer { flex-direction: column; gap: 6px; text-align: center; }
 }
-
