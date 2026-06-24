@@ -1,4 +1,4 @@
-# SabdaAI
+# SabdhaAi-
 
 SabdaAI is a real-time safety moderator, text analysis platform, and browser extension designed for Nepali text (Devanagari and romanized). It classifies comments into **Normal**, **Offensive**, or **Hateful**, identifies targeted harassment, and provides features like feedback loops, screenshot OCR analysis, and text sanitization suggestions.
 

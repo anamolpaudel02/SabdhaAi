@@ -24,10 +24,8 @@ from collections import Counter
 
 random.seed(42)
 
-# ─────────────────────────────────────────────────────────────────────────────
-# TEMPLATES  (class 0 – Hate Speech)
+# TEMPLATES (class 0 - Hate Speech)
 # Each tuple: (devanagari_text, romanized_text)
-# ─────────────────────────────────────────────────────────────────────────────
 HATE_SPEECH = [
     ("ती धोती मान्छेहरू नेपालबाट जानु पर्छ, यो देश हाम्रो हो।",
      "Tee dhoti manchheharoo Nepalbaata jaanu parchha, yo desh hamro ho."),
@@ -133,9 +131,7 @@ HATE_SPEECH = [
      "Yo dharmik ghrinako abhiyaanma saamel hou."),
 ]
 
-# ─────────────────────────────────────────────────────────────────────────────
-# TEMPLATES  (class 1 – Offensive Language)
-# ─────────────────────────────────────────────────────────────────────────────
+# TEMPLATES (class 1 - Offensive Language)
 OFFENSIVE_LANGUAGE = [
     ("तँ एउटा मूर्ख मान्छे हो, केही थाहा छैन तँलाई।",
      "Tan euta moorakh manchhe ho, kehi thaaha chhaina tanlai."),
@@ -377,9 +373,7 @@ OFFENSIVE_LANGUAGE = [
      "Moorakh saala, tero ke thulo chha?"),
 ]
 
-# ─────────────────────────────────────────────────────────────────────────────
-# TEMPLATES  (class 2 – Neither / Clean)
-# ─────────────────────────────────────────────────────────────────────────────
+# TEMPLATES (class 2 - Neither / Clean)
 NEITHER = [
     ("आज मौसम धेरै राम्रो छ, घुम्न जाऊँ।",
      "Aaja mausam dherai raamo chha, ghoomna jaau."),

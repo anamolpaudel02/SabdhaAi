@@ -1,8 +1,6 @@
-// ─────────────────────────────────────────────────────────────────────────────
 // SabdaAI — app.js  (Premium Features v2)
 // Features: OCR, Diff View, Live Danger Score, Paste+Submit,
 //           Flagged Words Chart, Safe-to-Post Verdict
-// ─────────────────────────────────────────────────────────────────────────────
 
 // Counters
 let total = 0, normal = 0, offensive = 0, hateful = 0;
@@ -30,7 +28,7 @@ let doughnutChart = null;
 let barChart = null;
 let flaggedWordsChart = null;
 
-// ── Feature 3: Live Danger Score keyword sets (client-side) ──────────────────
+// Feature 3: Live Danger Score keyword sets (client-side)
 const DANGER_HATEFUL = [
     'मार्छु','काट्छु','मार्ने','काट्ने','मरोस्','सखाप','धोती','भते','मर्स्या','जाठो',
     'hate','kill','destroy','scum','die'
@@ -40,7 +38,7 @@ const DANGER_OFFENSIVE = [
     'stupid','idiot','vulgar','nonsense'
 ];
 
-// ── Boot ─────────────────────────────────────────────────────────────────────
+// Boot
 window.addEventListener('DOMContentLoaded', () => {
     checkStatus();
 
@@ -66,7 +64,7 @@ window.addEventListener('DOMContentLoaded', () => {
     initOcrUpload();
 });
 
-// ── Feature 3: Live Danger Score ─────────────────────────────────────────────
+// Feature 3: Live Danger Score
 function updateDangerScore(text) {
     const val = text.toLowerCase();
     const dangerBar = document.getElementById('danger-bar');
@@ -103,7 +101,7 @@ function updateDangerScore(text) {
     }
 }
 
-// ── Feature 4: Paste & Analyze ───────────────────────────────────────────────
+// Feature 4: Paste & Analyze
 window.pasteAndAnalyze = async function() {
     try {
         const text = await navigator.clipboard.readText();
@@ -118,7 +116,7 @@ window.pasteAndAnalyze = async function() {
     }
 };
 
-// ── Core analysis runner ──────────────────────────────────────────────────────
+// Core analysis runner
 async function runAnalysis() {
     const msg = input.value.trim();
     if (!msg) return;
@@ -149,7 +147,7 @@ async function runAnalysis() {
     }
 }
 
-// ── Status check ─────────────────────────────────────────────────────────────
+// Status check
 async function checkStatus() {
     try {
         const r = await fetch('/api/status');
@@ -169,7 +167,7 @@ async function checkStatus() {
     }
 }
 
-// ── Tab switch ────────────────────────────────────────────────────────────────
+// Tab switch
 window.switchTab = function(name, el) {
     document.querySelectorAll('.tp').forEach(x => x.classList.remove('on'));
     document.querySelectorAll('.tab').forEach(x => x.classList.remove('on'));
@@ -177,7 +175,7 @@ window.switchTab = function(name, el) {
     el.classList.add('on');
 };
 
-// ── Load a preset into the textarea ──────────────────────────────────────────
+// Load a preset into the textarea
 window.load = function(text) {
     input.value = text;
     ctr.textContent = text.length;
@@ -186,7 +184,7 @@ window.load = function(text) {
     input.focus();
 };
 
-// ── Highlight flagged words ───────────────────────────────────────────────────
+// Highlight flagged words
 function highlightTokens(text, tokens, labelClass) {
     if (!tokens || tokens.length === 0) return esc(text);
     let escapedText = esc(text);
@@ -211,7 +209,7 @@ function escapeRegExp(string) {
     return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-// ── Feature 2: Word-level Diff Computation ────────────────────────────────────
+// Feature 2: Word-level Diff Computation
 function computeWordDiff(original, cleaned) {
     const origWords = original.trim().split(/\s+/);
     const cleanWords = cleaned.trim().split(/\s+/);
@@ -262,7 +260,7 @@ function renderDiffHTML(diffTokens) {
     }).join(' ');
 }
 
-// ── Transliteration map ───────────────────────────────────────────────────────
+// Transliteration map
 function romanizeNepali(text) {
     const vowels = {
         'अ': 'a', 'आ': 'aa', 'इ': 'i', 'ई': 'ee', 'उ': 'u', 'ऊ': 'oo', 'ऋ': 'ri',
@@ -330,7 +328,7 @@ window.toggleRoman = function(btn) {
     }
 };
 
-// ── Feature 6: Safe-to-Post verdict helpers ───────────────────────────────────
+// Feature 6: Safe-to-Post verdict helpers
 function getVerdict(label) {
     if (label === 'Normal') {
         return {
@@ -356,7 +354,7 @@ function getVerdict(label) {
     }
 }
 
-// ── Card rendering ────────────────────────────────────────────────────────────
+// Card rendering
 function addCard(res) {
     total++;
     const lc = res.label.toLowerCase();
@@ -434,7 +432,7 @@ function addCard(res) {
     results.insertBefore(card, results.firstChild);
 }
 
-// ── Feedback & correction loop ────────────────────────────────────────────────
+// Feedback & correction loop
 window.toggleFeedbackWidget = function(btn) {
     const parent = btn.parentElement;
     const widget = parent.querySelector('.feedback-widget');
@@ -526,7 +524,7 @@ window.clearAll = function() {
     emptyState.style.display = 'flex';
 };
 
-// ── CSV Batch Analysis & Charts ───────────────────────────────────────────────
+// CSV Batch Analysis & Charts
 function initCsvUpload() {
     const dropZone = document.getElementById('csv-drop-zone');
     const fileInput = document.getElementById('csv-file-input');
@@ -606,7 +604,7 @@ function initCsvUpload() {
     });
 }
 
-// ── Feature 1: Screenshot OCR Upload ─────────────────────────────────────────
+// Feature 1: Screenshot OCR Upload
 function initOcrUpload() {
     const dropZone = document.getElementById('ocr-drop-zone');
     const fileInput = document.getElementById('ocr-file-input');
@@ -818,7 +816,7 @@ window.filterCsvTable = function() {
     renderCsvTable(filtered);
 };
 
-// ── Feature 5: Most Flagged Words Chart ──────────────────────────────────────
+// Feature 5: Most Flagged Words Chart
 function computeFlaggedWordFrequency(data) {
     const freq = {};
     data.forEach(item => {
@@ -1011,7 +1009,7 @@ function esc(s) {
     return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-// ── Feature 2: Suggest Clean + Diff View ─────────────────────────────────────
+// Feature 2: Suggest Clean + Diff View
 window.suggestClean = async function(btn) {
     const card = btn.closest('.rcard');
     const text = card.dataset.text;

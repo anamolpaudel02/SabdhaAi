@@ -1,8 +1,6 @@
 
 
-# =============================================================================
 # NORMAL / POSITIVE WORDS  (plain list – no severity needed)
-# =============================================================================
 NORMAL_WORDS = [
 
     #  Nepali: Greetings & Salutations 
@@ -1460,7 +1458,7 @@ HATEFUL_PHRASES = [
 # The classifier should transliterate before checking OFFENSIVE/HATEFUL dicts.
 
 ROMANIZED_MAP = {
-    # ── Threats ──────────────────────────────────────────────────────────────
+    # Threats
     "marchu":           "मार्छु",
     "marichhu":         "मार्छु",
     "maridinchhu":      "मारिदिन्छु",
@@ -1507,7 +1505,7 @@ ROMANIZED_MAP = {
     "badla linchhu":    "बदला लिन्छु",
     "badla linu":       "बदला लिन्छु",
 
-    # ── Common Insults (all spelling variants) ────────────────────────────────
+    # Common Insults (all spelling variants)
     # muji variants – most commonly searched / evaded word
     "muji":             "मुजी",
     "muj":              "मुजी",
@@ -1700,7 +1698,7 @@ ROMANIZED_MAP = {
     "gaali":            "गालीगलौज",
     "gaalii":           "गालीगलौज",
 
-    # ── Tera/Tero ("your __") offensive combos ──────────────────────────────
+    # Tera/Tero ("your __") offensive combos
     "teri aama":        "तेरी आमा",
     "teri maa":         "तेरी आमा",
     "tero bau":         "तेरो बाउको",
@@ -1712,7 +1710,7 @@ ROMANIZED_MAP = {
     "bahini chikne":    "बहिनी चिक्ने",
     "didi chikne":      "बहिनी चिक्ने",
 
-    # ── Death wishes ─────────────────────────────────────────────────────────
+    # Death wishes
     "maros":            "मरोस्",
     "marosa":           "मरोस्",
     "marija":           "मरिजा",
@@ -1738,7 +1736,7 @@ ROMANIZED_MAP = {
     "dhwasta hos":      "ध्वस्त होस्",
     "mritu hos":        "मृत्यु होस्",
 
-    # ── Extremist / Incitement ────────────────────────────────────────────────
+    # Extremist / Incitement
     "aatankabad":       "आतंकवाद",
     "aatankwad":        "आतंकवाद",
     "aatankbad":        "आतंकवाद",
@@ -1960,7 +1958,7 @@ if __name__ == "__main__":
     print(f"  Hateful phrases     : {_WORD_COUNTS['hateful_phrases']:,}")
     print(f"  Romanized map       : {_WORD_COUNTS['romanized_entries']:,} entries")
     print(f"  Context-safe entries: {_WORD_COUNTS['context_safe_entries']:,} entries")
-    print(f"  ───────────────────────────────────────")
+    print(f"  ---------------------------------------")
     print(f"  TOTAL items         : {_WORD_COUNTS['total_items']:,}")
 
     print()
