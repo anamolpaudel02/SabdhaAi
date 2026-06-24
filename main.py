@@ -18,6 +18,8 @@ try:
 except ImportError:
     OCR_AVAILABLE = False
 
+from mocks import classify_local
+
 app = FastAPI(title="SabdaAI")
 
 app.add_middleware(
@@ -94,43 +96,67 @@ def analyze_text_internal(text: str) -> ClassificationResult:
             reason="User corrected label (feedback loop override)",
             highlighted_tokens=[]
         )
-        
+
+    # Mock Mode: local lexicon-based rule engine (words.py), always
+    # available with no API key required. This is the default engine.
     if not client:
-        raise RuntimeError("Gemini API key is not configured.")
-        
-    prompt = (
-        "You are an automated comment moderator for Nepali text. "
-        "Classify this comment into Normal (safe/neutral/polite), "
-        "Offensive (general swearing/slang/rudeness with no specific target), "
-        "or Hateful (harassment, threat, or targeting based on caste/religion/gender/nationality).\n"
-        "Identify the exact words/tokens in the text that caused this classification (especially for Offensive or Hateful).\n"
-        "Output ONLY valid JSON with this exact schema:\n"
-        '{"label": "Normal" | "Offensive" | "Hateful", "confidence": integer 0-100, "reason": "short English reason", "highlighted_tokens": ["word1", "word2"]}'
-        f"\n\nComment to moderate:\n\"{content}\""
-    )
-    
-    response = client.models.generate_content(
-        model="gemini-1.5-flash",
-        contents=prompt,
-        config={
-            "response_mime_type": "application/json",
-        }
-    )
-    
-    data = json.loads(response.text.strip())
-    lbl = data.get("label", "Normal")
-    if lbl not in ["Normal", "Offensive", "Hateful"]:
-        lbl = "Normal"
-        
-    conf = int(data.get("confidence", 80))
-    conf = max(0, min(100, conf))
-    reason = data.get("reason", "Analysis successful")
-    tokens = data.get("highlighted_tokens", [])
-    if not isinstance(tokens, list):
-        tokens = []
-    tokens = [str(t) for t in tokens]
-    
-    return ClassificationResult(label=lbl, confidence=conf, reason=reason, highlighted_tokens=tokens)
+        local_result = classify_local(content)
+        return ClassificationResult(**local_result)
+
+    # If a Gemini API key is configured, use it as the primary engine,
+    # falling back to the local rule engine if the call fails for any
+    # reason (network error, bad response, etc.) so analysis never
+    # hard-fails when a local fallback is available.
+    try:
+        prompt = (
+            "You are an automated comment moderator for Nepali text. "
+            "Classify this comment into Normal (safe/neutral/polite), "
+            "Offensive (general swearing/slang/rudeness with no specific target), "
+            "or Hateful (harassment, threat, or targeting based on caste/religion/gender/nationality).\n"
+            "Identify the exact words/tokens in the text that caused this classification (especially for Offensive or Hateful).\n"
+            "Output ONLY valid JSON with this exact schema:\n"
+            '{"label": "Normal" | "Offensive" | "Hateful", "confidence": integer 0-100, "reason": "short English reason", "highlighted_tokens": ["word1", "word2"]}'
+            f"\n\nComment to moderate:\n\"{content}\""
+        )
+
+        response = client.models.generate_content(
+            model="gemini-1.5-flash",
+            contents=prompt,
+            config={
+                "response_mime_type": "application/json",
+            }
+        )
+
+        data = json.loads(response.text.strip())
+        lbl = data.get("label", "Normal")
+        if lbl not in ["Normal", "Offensive", "Hateful"]:
+            lbl = "Normal"
+
+        conf = int(data.get("confidence", 80))
+        conf = max(0, min(100, conf))
+        reason = data.get("reason", "Analysis successful")
+        tokens = data.get("highlighted_tokens", [])
+        if not isinstance(tokens, list):
+            tokens = []
+        tokens = [str(t) for t in tokens]
+
+        gemini_result = ClassificationResult(label=lbl, confidence=conf, reason=reason, highlighted_tokens=tokens)
+
+        # Cross-check against the local lexicon: if the local engine is
+        # confident this is Hateful/Offensive but Gemini said Normal,
+        # prefer the stricter local result rather than silently missing
+        # known slurs/threats (this is what caused "muji" to slip through
+        # while "kill" was caught - Gemini's judgement alone is not
+        # consistent across known terms already curated in words.py).
+        local_result = classify_local(content)
+        severity = {"Normal": 0, "Offensive": 1, "Hateful": 2}
+        if severity[local_result["label"]] > severity[gemini_result.label]:
+            return ClassificationResult(**local_result)
+
+        return gemini_result
+    except Exception:
+        local_result = classify_local(content)
+        return ClassificationResult(**local_result)
 
 @app.get("/api/status")
 def get_status():
