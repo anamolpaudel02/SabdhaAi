@@ -35,9 +35,17 @@
                 </div>
             </div>
 
-            <div id="status-badge" class="status-pill checking">
-                <span class="dot"></span>
-                <span class="status-label">Checking status...</span>
+            <div class="header-right" style="display: flex; align-items: center; gap: 12px;">
+                <div class="dash-mode-select-wrap">
+                    <select id="dashboard-filter-mode" class="dash-mode-select">
+                        <option value="adult">Normal Adult</option>
+                        <option value="parental">Parental</option>
+                    </select>
+                </div>
+                <div id="status-badge" class="status-pill checking">
+                    <span class="dot"></span>
+                    <span class="status-label">Checking status...</span>
+                </div>
             </div>
         </header>
 

@@ -104,6 +104,45 @@ body {
     color: var(--green);
 }
 
+.mode-box {
+    margin-bottom: 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.mode-select-wrap {
+    position: relative;
+    width: 130px;
+}
+
+.mode-select {
+    width: 100%;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 24px 6px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    outline: none;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%238b9ab8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'></polyline></svg>");
+    background-repeat: no-repeat;
+    background-position: right 6px center;
+    background-size: 12px;
+    transition: border-color 0.2s;
+}
+
+.mode-select:hover {
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.mode-select:focus {
+    border-color: var(--blue);
+}
+
 .stats-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);

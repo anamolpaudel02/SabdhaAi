@@ -4,6 +4,19 @@ document.addEventListener('DOMContentLoaded', () => {
     checkBackendStatus();
     loadStats();
 
+    const modeSelect = document.getElementById('filter-mode');
+    if (modeSelect) {
+        chrome.storage.local.get(['mode'], (result) => {
+            const currentMode = result.mode || 'adult';
+            modeSelect.value = currentMode;
+        });
+
+        modeSelect.addEventListener('change', (e) => {
+            const newMode = e.target.value;
+            chrome.storage.local.set({ mode: newMode });
+        });
+    }
+
     const scanBtn = document.getElementById('scan-btn');
     if (scanBtn) {
         scanBtn.addEventListener('click', () => {

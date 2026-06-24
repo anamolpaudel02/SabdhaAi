@@ -42,6 +42,25 @@ const DANGER_OFFENSIVE = [
 window.addEventListener('DOMContentLoaded', () => {
     checkStatus();
 
+    const dashModeSelect = document.getElementById('dashboard-filter-mode');
+    const initialMode = localStorage.getItem('dash-mode') || 'adult';
+
+    function updateDashboardModeClass(mode) {
+        document.body.classList.remove('dash-mode-adult', 'dash-mode-parental');
+        document.body.classList.add(`dash-mode-${mode}`);
+    }
+
+    if (dashModeSelect) {
+        dashModeSelect.value = initialMode;
+        updateDashboardModeClass(initialMode);
+
+        dashModeSelect.addEventListener('change', (e) => {
+            const newMode = e.target.value;
+            localStorage.setItem('dash-mode', newMode);
+            updateDashboardModeClass(newMode);
+        });
+    }
+
     input.addEventListener('input', () => {
         const n = input.value.length;
         ctr.textContent = n;
@@ -395,7 +414,7 @@ function addCard(res) {
                 </div>
             </div>
         </div>
-        <div class="rcomment">${highlightTokens(res.text, res.highlighted_tokens, lc)}</div>
+        <div class="rcomment" onclick="revealDashboardComment(this)"><span class="rcomment-text">${highlightTokens(res.text, res.highlighted_tokens, lc)}</span></div>
         
         <div class="roman-row">
             <button class="roman-toggle" onclick="toggleRoman(this)">🔤 Show Phonetic English</button>
@@ -1089,4 +1108,14 @@ window.copyCleanText = function(btn, text) {
     }).catch(err => {
         console.error('Copy failed', err);
     });
+};
+
+window.revealDashboardComment = function(el) {
+    const currentMode = localStorage.getItem('dash-mode') || 'adult';
+    if (currentMode === 'parental') {
+        return;
+    }
+    el.classList.add('revealed-wrap');
+    const textEl = el.querySelector('.rcomment-text');
+    if (textEl) textEl.classList.add('revealed');
 };

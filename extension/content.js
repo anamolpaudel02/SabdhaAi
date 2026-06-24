@@ -2,6 +2,31 @@ const BACKEND_URL = 'http://localhost:8000';
 let stats = { scanned: 0, offensive: 0, hateful: 0, enabled: true };
 const isInstagram = window.location.hostname.includes('instagram.com');
 
+let currentMode = 'adult';
+
+function updateBodyModeClass(mode) {
+    document.body.classList.remove('sabdaai-mode-adult', 'sabdaai-mode-parental');
+    if (mode === 'parental') {
+        document.body.classList.add('sabdaai-mode-parental');
+    } else {
+        document.body.classList.add('sabdaai-mode-adult');
+    }
+}
+
+chrome.storage.local.get(['mode'], (result) => {
+    if (result.mode) {
+        currentMode = result.mode;
+    }
+    updateBodyModeClass(currentMode);
+});
+
+chrome.storage.onChanged.addListener((changes, namespace) => {
+    if (namespace === 'local' && changes.mode) {
+        currentMode = changes.mode.newValue;
+        updateBodyModeClass(currentMode);
+    }
+});
+
 // styling for visual overlays
 const styleEl = document.createElement('style');
 styleEl.textContent = `
@@ -11,7 +36,6 @@ styleEl.textContent = `
         background-color: rgba(251, 77, 109, 0.12) !important;
         padding: 3px 8px !important;
         border-radius: 6px !important;
-        cursor: pointer !important;
         display: inline-block !important;
         margin: 2px 0 !important;
         position: relative !important;
@@ -24,8 +48,22 @@ styleEl.textContent = `
         user-select: none !important;
         transition: all 0.3s ease !important;
     }
-    .sabdaai-inst-hateful::before {
+    .sabdaai-mode-adult .sabdaai-inst-hateful {
+        cursor: pointer !important;
+    }
+    .sabdaai-mode-adult .sabdaai-inst-hateful::before {
         content: "⚠️ Hateful Comment Hidden (Click to Reveal)" !important;
+        color: #fb4d6d !important;
+        font-weight: 700 !important;
+        font-size: 11px !important;
+        margin-right: 6px !important;
+        display: inline-block !important;
+    }
+    .sabdaai-mode-parental .sabdaai-inst-hateful {
+        cursor: default !important;
+    }
+    .sabdaai-mode-parental .sabdaai-inst-hateful::before {
+        content: "⚠️ Hateful Comment Hidden" !important;
         color: #fb4d6d !important;
         font-weight: 700 !important;
         font-size: 11px !important;
@@ -47,45 +85,67 @@ styleEl.textContent = `
         user-select: text !important;
     }
 
-    .sabdaai-inst-offensive {
+    /* Parental mode offensive style (hidden/blurred) */
+    .sabdaai-mode-parental .sabdaai-inst-offensive {
         border: 1.5px solid #fbbf24 !important;
         background-color: rgba(251, 191, 36, 0.08) !important;
         padding: 3px 8px !important;
         border-radius: 6px !important;
-        cursor: pointer !important;
+        cursor: default !important;
         display: inline-block !important;
         margin: 2px 0 !important;
         position: relative !important;
         transition: all 0.25s ease !important;
     }
-    .sabdaai-inst-offensive .sabdaai-offensive-text {
+    .sabdaai-mode-parental .sabdaai-inst-offensive .sabdaai-offensive-text {
         filter: blur(3.5px) !important;
         opacity: 0.45 !important;
         pointer-events: none !important;
         user-select: none !important;
         transition: all 0.3s ease !important;
     }
-    .sabdaai-inst-offensive::before {
-        content: "⚠️ Offensive Comment (Click to Reveal)" !important;
+    .sabdaai-mode-parental .sabdaai-inst-offensive::before {
+        content: "⚠️ Offensive Comment Hidden" !important;
         color: #fbbf24 !important;
         font-weight: 700 !important;
         font-size: 11px !important;
         margin-right: 6px !important;
         display: inline-block !important;
     }
-    .sabdaai-inst-offensive.revealed {
+    .sabdaai-mode-parental .sabdaai-inst-offensive.revealed {
         border-color: rgba(255, 255, 255, 0.08) !important;
         background-color: rgba(255, 255, 255, 0.02) !important;
     }
-    .sabdaai-inst-offensive.revealed::before {
+    .sabdaai-mode-parental .sabdaai-inst-offensive.revealed::before {
         content: "⚠️ Offensive (Revealed):" !important;
         opacity: 0.6 !important;
     }
-    .sabdaai-inst-offensive.revealed .sabdaai-offensive-text {
+    .sabdaai-mode-parental .sabdaai-inst-offensive.revealed .sabdaai-offensive-text {
         filter: none !important;
         opacity: 1 !important;
         pointer-events: auto !important;
         user-select: text !important;
+    }
+
+    /* Adult mode offensive style (looks completely normal) */
+    .sabdaai-mode-adult .sabdaai-inst-offensive {
+        border: none !important;
+        background-color: transparent !important;
+        padding: 0 !important;
+        border-radius: 0 !important;
+        cursor: text !important;
+        display: inline !important;
+        margin: 0 !important;
+    }
+    .sabdaai-mode-adult .sabdaai-inst-offensive .sabdaai-offensive-text {
+        filter: none !important;
+        opacity: 1 !important;
+        pointer-events: auto !important;
+        user-select: text !important;
+    }
+    .sabdaai-mode-adult .sabdaai-inst-offensive::before {
+        content: "" !important;
+        display: none !important;
     }
 
     /* Testing Page specific highlights */
@@ -126,7 +186,10 @@ function findNepaliTextNodes(root = document.body) {
                         return NodeFilter.FILTER_REJECT;
                     }
                 }
-                if (/[\u0900-\u097F]/.test(node.nodeValue)) {
+                const val = node.nodeValue;
+                const hasDevanagari = /[\u0900-\u097F]/.test(val);
+                const hasRomanizedNepali = /\b(tw|chha|parchha|parne|pani|hola|banauna|bhanne|bhaneko|maile|taile|timi|haru|haroo|muji|randi|gede|kera|garni|garne|gahro|hunchha|hudaina|bhandina|aaijha|khuru|pardaina|garchhu|garchu|garnu|hoina|haina|timro|hamro|tero|teri|bauko|aamachikne|machikne|chakka|puti|lado|kukur|khate|saala|gidi|muzi|bho|bhayo|hoki|kasto|kina|baje|dai|bhai|sathi|yaar|solti)\b/i.test(val);
+                if (hasDevanagari || hasRomanizedNepali) {
                     return NodeFilter.FILTER_ACCEPT;
                 }
                 return NodeFilter.FILTER_SKIP;
@@ -163,6 +226,9 @@ function highlightNode(node, result) {
         // Add click-to-reveal event listener
         wrapper.addEventListener('click', (e) => {
             e.stopPropagation();
+            if (currentMode === 'parental') {
+                return;
+            }
             wrapper.classList.toggle('revealed');
         });
 
