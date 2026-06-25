@@ -1690,3 +1690,53 @@ ins.diff-added {
     color: #fbbf24;
     margin-bottom: 6px;
 }
+
+/* ── Contribute Tab ── */
+.contrib-label-opt {
+    cursor: pointer;
+}
+.contrib-label-opt input[type="radio"] {
+    display: none;
+}
+.cl-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 18px;
+    border-radius: 999px;
+    font-size: .82rem;
+    font-weight: 600;
+    border: 1.5px solid var(--border);
+    background: rgba(255,255,255,0.03);
+    color: var(--text-2);
+    transition: all .18s var(--ease);
+    user-select: none;
+}
+.cl-pill:hover {
+    background: rgba(255,255,255,0.06);
+    border-color: rgba(255,255,255,0.14);
+}
+.contrib-label-opt input[type="radio"]:checked + .cl-pill.cl-n {
+    background: rgba(34, 211, 165, 0.12);
+    border-color: var(--green-border);
+    color: var(--green);
+}
+.contrib-label-opt input[type="radio"]:checked + .cl-pill.cl-o {
+    background: var(--amber-dim);
+    border-color: var(--amber-border);
+    color: var(--amber);
+}
+.contrib-label-opt input[type="radio"]:checked + .cl-pill.cl-h {
+    background: var(--red-dim);
+    border-color: var(--red-border);
+    color: var(--red);
+}
+
+/* Animate contrib success/error */
+.contrib-msg {
+    animation: fadeSlideUp .3s var(--ease);
+}
+@keyframes fadeSlideUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: none; }
+}

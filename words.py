@@ -931,33 +931,56 @@ OFFENSIVE_WORDS = {
 
 HATEFUL_WORDS = {
 
-    # Nepali: Threats & Violence 
+    # Nepali: Threats & Violence — first-person singular
     "मार्छु":           0.95,
     "मार्ने":           0.90,
     "मारिदिन्छु":       0.98,
     "मारिदिउँ":         0.95,
     "मारिहाल्छु":       0.95,
+    # hortative ("let's kill") — plural incitement
+    "मारौं":            0.93,
+    "मारिदिऊ":          0.93,
+    # third-person / future
+    "मार्नेछ":          0.90,
+    "मारिनेछ":          0.90,
+    # obligation ("must/should kill")
+    "मार्नु पर्छ":      0.92,
+    "मार्नु हुन्छ":     0.90,
+
     "काट्छु":           0.90,
     "काट्ने":           0.85,
     "काटिदिन्छु":       0.93,
     "काटिहाल्छु":       0.92,
+    "काटौं":            0.90,   # hortative
+    "काट्नु पर्छ":      0.90,   # obligation
+    "काट्नेछ":          0.88,   # future/3rd-person
+
     "मरोस्":            0.80,
     "मरिजाओस्":         0.80,
     "मरिजा":            0.80,
     "मर":               0.75,
     "जलाउँछु":          0.88,
     "जलाइदिन्छु":       0.90,
+    "जलाऔं":            0.90,   # hortative — let's burn them
+    "जलाउनु पर्छ":      0.90,   # obligation — must be burned
     "डुबाउँछु":         0.88,
     "फेकिदिन्छु":       0.82,
     "पुरिदिन्छु":       0.88,
     "मुठ्ठी हिर्काउँछु": 0.85,
     "पिट्छु":           0.80,
+    "पिटौं":            0.82,   # hortative — let's beat them
+    "पिट्नु पर्छ":      0.82,   # obligation
     "कुट्छु":           0.80,
+    "कुटौं":            0.82,   # hortative
+    "कुट्नु पर्छ":      0.82,   # obligation
+
     "ठोक्छु":           0.82,
     "धकेल्छु":          0.72,
     "घाइते गर्छु":      0.88,
     "अपाङ्ग बनाउँछु":  0.90,
     "सखाप पार्छु":      0.88,
+    "सखाप पार्नु पर्छ": 0.92,  # obligation/incitement form ("must be destroyed")
+    "सखाप पार":         0.85,  # imperative root
     "समाप्त गर्छु":     0.87,
     "ध्वंस गर्छु":      0.85,
     "बर्बाद गर्छु":     0.82,
@@ -1035,6 +1058,20 @@ HATEFUL_WORDS = {
     "नीच जात":          0.82,
     "पतित जात":         0.80,
 
+    #  Nepali: Group-expulsion & collective incitement ("they should be expelled/destroyed")
+    "लखेट्नु पर्छ":     0.95,  # must be expelled/driven out
+    "लखेट्":            0.88,  # expel (verb root, Devanagari substring match)
+    "खेद्नु पर्छ":      0.90,  # must be driven away
+    "देश निकाला":       0.92,  # banishment/exile demand
+    "नेपालबाट लखेट":    0.97,  # expel from Nepal (geographic group targeting)
+    "नेपालबाट भगाउ":    0.95,  # chase out of Nepal
+    "जातका मान्छे":     0.85,  # targeting a group by caste ("people of this caste")
+    "यो जातका":         0.88,  # "of this caste" — group targeting opener
+    "यिनीहरूलाई सखाप":  0.97,  # destroy them (3rd-person plural group)
+    "यिनीहरूलाई लखेट":  0.97,  # expel them (3rd-person plural group)
+    "सफाया गर्नु पर्छ": 0.97,  # must be eliminated
+    "सफाया गरौं":       0.97,  # let's eliminate them
+
     #  Nepali: Additional hate/threat 
     "बदला लिन्छु":      0.85,
     "माफ गर्दिनँ":      0.70,
@@ -1095,8 +1132,8 @@ HATEFUL_WORDS = {
     "nowhere to hide":  0.82,
     "i will make you suffer": 0.92,
     "you will suffer":  0.88,
-    "hurt":             0.72,
-    "harm":             0.70,
+    "hurt":             0.55,   # lowered — very common in benign contexts; CONTEXT_SAFE covers most
+    "harm":             0.52,   # lowered — "no harm done", "harm reduction" etc. are benign
     "injure":           0.72,
     "wound":            0.72,
     "maim":             0.85,
@@ -1424,6 +1461,15 @@ HATEFUL_PHRASES = [
     "तँलाई सखाप पार्छु",
     "जीवनबाट हटाउँछु",
     "रगत गिराउँछु",
+    # Group-expulsion & collective incitement
+    "नेपालबाट लखेट्नु पर्छ",
+    "नेपालबाट भगाउनु पर्छ",
+    "सखाप पार्नु पर्छ",
+    "सफाया गर्नु पर्छ",
+    "यो जातका मान्छेहरू",
+    "यिनीहरूलाई लखेट्नु पर्छ",
+    "यिनीहरूलाई सखाप पार्नु पर्छ",
+    "देश निकाला गर्नु पर्छ",
     # English
     "i will kill you",
     "i will hurt you",
@@ -1770,6 +1816,20 @@ CONTEXT_SAFE = {
     "मारोस्": [
         "नमारोस्",          
     ],
+    "mean": [
+        "didn't mean",
+        "did not mean",
+        "never meant",
+        "i mean",
+        "you know what i mean",
+        "mean well",
+        "means well",
+        "mean to",
+        "means a lot",
+        "what do you mean",
+        "i meant",
+        "it means",
+    ],
     "kill": [
         "skill",
         "kill it",
@@ -1789,9 +1849,30 @@ CONTEXT_SAFE = {
     "hurt": [
         "hurt feelings",
         "doesn't hurt",
+        "does not hurt",
         "got hurt playing",
         "hurt my knee",
         "emotionally hurt",
+        "hurt my back",
+        "hurt my arm",
+        "hurt my leg",
+        "never meant to hurt",
+        "didn't mean to hurt",
+        "hate to hurt",
+        "no one was hurt",
+        "get hurt",
+    ],
+    "harm": [
+        "no harm done",
+        "no harm intended",
+        "harm reduction",
+        "harm prevention",
+        "do no harm",
+        "without harm",
+        "harm free",
+        "didn't mean any harm",
+        "cause no harm",
+        "out of harm's way",
     ],
     "die": [
         "die hard",

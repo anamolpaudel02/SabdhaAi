@@ -31,11 +31,16 @@ let flaggedWordsChart = null;
 // Feature 3: Live Danger Score keyword sets (client-side)
 const DANGER_HATEFUL = [
     'मार्छु','काट्छु','मार्ने','काट्ने','मरोस्','सखाप','धोती','भते','मर्स्या','जाठो',
-    'hate','kill','destroy','scum','die'
+    'hate','kill','destroy','scum','die',
+    // romanized hateful variants
+    'marchu','katchu','marne','katne','maros','sakhap','dhoti','bhate','marsya','jatho'
 ];
 const DANGER_OFFENSIVE = [
     'मुजी','खाते','रन्डी','गधा','मूर्ख','बदमास','फटाहा','साला','कुरूप','धत्','तेरो',
-    'stupid','idiot','vulgar','nonsense'
+    'stupid','idiot','vulgar','nonsense',
+    // romanized offensive variants
+    'muji','muj','muzi','muje','muzy','mujee','mooji','randi','randi','gadhaa','gadha',
+    'murkha','murkh','badmaas','badmas','fataha','sala','salo','kurup','dhatt'
 ];
 
 // Boot
@@ -84,14 +89,29 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 // Feature 3: Live Danger Score
+// Smart word matcher: uses whole-word boundary for Latin script so "killed"
+// doesn't trigger "kill", but Devanagari uses substring (no \b support).
+function _dangerMatches(val, words) {
+    return words.some(w => {
+        const isLatin = /^[a-z0-9 '\-]+$/.test(w);
+        if (isLatin) {
+            // Whole-word match only — avoids "killed" matching "kill"
+            return new RegExp('(?<![a-z0-9])' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?![a-z0-9])', 'i').test(val);
+        } else {
+            // Devanagari: substring match (regex \b doesn't work for Unicode)
+            return val.includes(w);
+        }
+    });
+}
+
 function updateDangerScore(text) {
     const val = text.toLowerCase();
     const dangerBar = document.getElementById('danger-bar');
     const dangerLabel = document.getElementById('danger-label');
     if (!dangerBar || !dangerLabel) return;
 
-    const isHateful = DANGER_HATEFUL.some(w => val.includes(w));
-    const isOffensive = DANGER_OFFENSIVE.some(w => val.includes(w));
+    const isHateful  = _dangerMatches(val, DANGER_HATEFUL);
+    const isOffensive = _dangerMatches(val, DANGER_OFFENSIVE);
 
     if (!val.trim()) {
         input.style.background = 'rgba(0,0,0,0.28)';
@@ -1119,3 +1139,97 @@ window.revealDashboardComment = function(el) {
     const textEl = el.querySelector('.rcomment-text');
     if (textEl) textEl.classList.add('revealed');
 };
+
+// ─────────────────────────────────────────────────────────────
+// CONTRIBUTE TAB — submit a training sample for admin review
+// ─────────────────────────────────────────────────────────────
+
+(function wireContribTab() {
+    // Wire char counter for contrib textarea
+    document.addEventListener('DOMContentLoaded', () => {
+        const ta = document.getElementById('contrib-text');
+        const counter = document.getElementById('contrib-char');
+        if (ta && counter) {
+            ta.addEventListener('input', () => {
+                const n = ta.value.length;
+                counter.textContent = n;
+                counter.style.color = n >= 900 ? '#fb4d6d' : n >= 700 ? '#fbbf24' : '#4b5a72';
+            });
+        }
+    });
+})();
+
+window.submitContribution = async function () {
+    const textEl   = document.getElementById('contrib-text');
+    const noteEl   = document.getElementById('contrib-note');
+    const successEl = document.getElementById('contrib-success');
+    const errorEl  = document.getElementById('contrib-error');
+    const submitBtn = document.getElementById('contrib-submit-btn');
+
+    const text = textEl ? textEl.value.trim() : '';
+    const note = noteEl ? noteEl.value.trim() : '';
+
+    // Get selected label from radio group
+    const radios = document.querySelectorAll('input[name="contrib-label"]');
+    let suggested_label = 'Normal';
+    radios.forEach(r => { if (r.checked) suggested_label = r.value; });
+
+    // Validation
+    if (!text) {
+        errorEl.textContent = '⚠️ Please enter a text sample before submitting.';
+        errorEl.style.display = 'block';
+        errorEl.classList.add('contrib-msg');
+        successEl.style.display = 'none';
+        return;
+    }
+    if (text.length < 5) {
+        errorEl.textContent = '⚠️ Text is too short. Please enter a meaningful sample (at least 5 characters).';
+        errorEl.style.display = 'block';
+        errorEl.classList.add('contrib-msg');
+        successEl.style.display = 'none';
+        return;
+    }
+
+    // Loading state
+    successEl.style.display = 'none';
+    errorEl.style.display = 'none';
+    const originalHTML = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="spinner" style="display:inline-block"></span><span class="lbl"> Submitting…</span>';
+
+    try {
+        const res = await fetch('/api/contribute', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text, suggested_label, note })
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+            throw new Error(data.detail || `Server error (${res.status})`);
+        }
+
+        // Success — show message and clear the form
+        successEl.style.display = 'block';
+        successEl.classList.add('contrib-msg');
+        errorEl.style.display = 'none';
+        if (textEl) textEl.value = '';
+        if (noteEl) noteEl.value = '';
+        // Reset counter
+        const counter = document.getElementById('contrib-char');
+        if (counter) counter.textContent = '0';
+        // Reset radio to Normal
+        const normalRadio = document.querySelector('input[name="contrib-label"][value="Normal"]');
+        if (normalRadio) normalRadio.checked = true;
+
+    } catch (err) {
+        errorEl.textContent = '❌ Submission failed: ' + (err.message || 'Unknown error. Please try again.');
+        errorEl.style.display = 'block';
+        errorEl.classList.add('contrib-msg');
+        successEl.style.display = 'none';
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalHTML;
+    }
+};
+

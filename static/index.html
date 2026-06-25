@@ -42,6 +42,9 @@
                         <option value="parental">Parental</option>
                     </select>
                 </div>
+                <a href="/admin" style="text-decoration:none">
+                    <button style="background:rgba(108,99,255,.15);border:1px solid rgba(108,99,255,.3);color:#a5a0ff;padding:7px 14px;border-radius:9px;font-size:.8rem;font-weight:600;cursor:pointer;transition:all .2s" onmouseover="this.style.background='rgba(108,99,255,.25)'" onmouseout="this.style.background='rgba(108,99,255,.15)'">⚙ Admin</button>
+                </a>
                 <div id="status-badge" class="status-pill checking">
                     <span class="dot"></span>
                     <span class="status-label">Checking status...</span>
@@ -65,6 +68,7 @@
                     <button class="tab" id="tab-btn-preset" onclick="switchTab('preset', this)">Quick Presets</button>
                     <button class="tab" id="tab-btn-csv" onclick="switchTab('csv', this)">CSV Upload</button>
                     <button class="tab" id="tab-btn-ocr" onclick="switchTab('ocr', this)">📷 Screenshot</button>
+                    <button class="tab" id="tab-btn-contribute" onclick="switchTab('contribute', this)">🤝 Contribute</button>
                 </div>
 
                 <!-- Single input -->
@@ -189,6 +193,58 @@
                             <span class="lbl">🔍 Scan &amp; Analyze Comments</span>
                             <span class="spinner"></span>
                         </button>
+                    </div>
+                </div>
+
+                <!-- ── Contribute tab ── -->
+                <div id="tab-contribute" class="tp">
+                    <p class="preset-hint">Help improve SabdaAI! Submit a Nepali or English text sample and suggest a label. All submissions go through admin review before being added to the dataset.</p>
+                    <div style="display:flex;flex-direction:column;gap:14px;margin-top:8px">
+                        <div>
+                            <label class="field-label" for="contrib-text">Text Sample</label>
+                            <div class="textarea-wrap">
+                                <textarea id="contrib-text"
+                                    placeholder="Enter a Nepali or English comment that should be in the training dataset..."
+                                    maxlength="1000"
+                                    style="min-height:100px"></textarea>
+                            </div>
+                            <div class="ctr"><span id="contrib-char">0</span> / 1000</div>
+                        </div>
+                        <div>
+                            <label class="field-label">Your Suggested Label</label>
+                            <div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap">
+                                <label class="contrib-label-opt" id="cl-normal">
+                                    <input type="radio" name="contrib-label" value="Normal" checked>
+                                    <span class="cl-pill cl-n">✅ Normal</span>
+                                </label>
+                                <label class="contrib-label-opt" id="cl-offensive">
+                                    <input type="radio" name="contrib-label" value="Offensive">
+                                    <span class="cl-pill cl-o">⚠️ Offensive</span>
+                                </label>
+                                <label class="contrib-label-opt" id="cl-hateful">
+                                    <input type="radio" name="contrib-label" value="Hateful">
+                                    <span class="cl-pill cl-h">🚫 Hateful</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="field-label" for="contrib-note">Why? (optional)</label>
+                            <input type="text" id="contrib-note"
+                                placeholder="e.g. Contains caste-based slur targeting a group..."
+                                maxlength="500"
+                                style="width:100%;background:var(--inp);border:1.5px solid var(--border);border-radius:10px;color:var(--text);padding:10px 14px;font-size:.9rem;outline:none;margin-top:6px;font-family:inherit">
+                        </div>
+                        <button type="button" id="contrib-submit-btn" class="btn-submit" onclick="submitContribution()" style="align-self:flex-start">
+                            <svg class="send-icon lbl" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5"/>
+                            </svg>
+                            <span class="lbl">Submit for Review</span>
+                            <span class="spinner"></span>
+                        </button>
+                        <div id="contrib-success" style="display:none;padding:14px 16px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);border-radius:10px;color:#22c55e;font-size:.88rem">
+                            🎉 Thank you! Your submission has been received and will be reviewed by the SabdaAI team.
+                        </div>
+                        <div id="contrib-error" style="display:none;padding:14px 16px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);border-radius:10px;color:#ef4444;font-size:.88rem"></div>
                     </div>
                 </div>
             </section>

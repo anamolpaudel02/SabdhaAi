@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SabdaAI — Admin Panel</title>
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg: #0a0b10;
+            --surface: #12141c;
+            --surface2: #1a1d28;
+            --border: rgba(255,255,255,0.07);
+            --text: #e8eaf0;
+            --muted: #7a7f95;
+            --accent: #6c63ff;
+            --accent-glow: rgba(108,99,255,0.25);
+            --green: #22c55e;
+            --orange: #f59e0b;
+            --red: #ef4444;
+            --radius: 14px;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+        }
+
+        /* ── BG canvas ── */
+        .bg-canvas { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+        .orb { position: absolute; border-radius: 50%; filter: blur(100px); opacity: 0.12; }
+        .orb-1 { width: 600px; height: 600px; background: #6c63ff; top: -200px; left: -200px; }
+        .orb-2 { width: 500px; height: 500px; background: #ec4899; bottom: -200px; right: -150px; }
+
+        /* ── Login Screen ── */
+        #login-screen {
+            position: fixed; inset: 0; z-index: 100;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(10,11,16,0.97);
+        }
+        .login-box {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 40px;
+            width: 380px;
+            display: flex; flex-direction: column; gap: 20px;
+        }
+        .login-logo { font-family: 'Outfit', sans-serif; font-size: 1.8rem; font-weight: 800; }
+        .login-logo span { color: var(--accent); }
+        .login-sub { color: var(--muted); font-size: .85rem; margin-top: -12px; }
+        .login-box label { font-size: .8rem; font-weight: 600; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; }
+        .login-box input {
+            width: 100%; padding: 12px 16px; margin-top: 6px;
+            background: var(--surface2); border: 1px solid var(--border);
+            border-radius: 10px; color: var(--text); font-size: .95rem;
+            outline: none; transition: border .2s;
+        }
+        .login-box input:focus { border-color: var(--accent); }
+        .btn-login {
+            background: var(--accent); color: #fff; border: none;
+            padding: 13px; border-radius: 10px; font-size: .95rem;
+            font-weight: 600; cursor: pointer; transition: opacity .2s;
+        }
+        .btn-login:hover { opacity: .88; }
+        #login-error { color: var(--red); font-size: .85rem; display: none; }
+
+        /* ── Main layout ── */
+        #main-panel { position: relative; z-index: 1; display: none; }
+        .topbar {
+            position: sticky; top: 0; z-index: 50;
+            background: rgba(10,11,16,0.85); backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 32px; height: 64px;
+        }
+        .topbar-brand { font-family: 'Outfit', sans-serif; font-size: 1.2rem; font-weight: 800; }
+        .topbar-brand span { color: var(--accent); }
+        .topbar-right { display: flex; align-items: center; gap: 12px; }
+        .pill-badge {
+            background: var(--surface2); border: 1px solid var(--border);
+            border-radius: 999px; padding: 4px 12px; font-size: .78rem;
+            font-weight: 600; color: var(--muted);
+        }
+        .pill-badge.pending { color: var(--orange); border-color: rgba(245,158,11,.3); background: rgba(245,158,11,.08); }
+        .btn-logout {
+            background: transparent; border: 1px solid var(--border);
+            color: var(--muted); padding: 6px 14px; border-radius: 8px;
+            font-size: .82rem; cursor: pointer; transition: all .2s;
+        }
+        .btn-logout:hover { border-color: var(--red); color: var(--red); }
+
+        .page-wrap { max-width: 1200px; margin: 0 auto; padding: 32px 24px; }
+
+        /* ── Stats row ── */
+        .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px; }
+        .stat-card {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: var(--radius); padding: 20px 22px;
+        }
+        .stat-num { font-family: 'Outfit', sans-serif; font-size: 2rem; font-weight: 800; }
+        .stat-lbl { color: var(--muted); font-size: .8rem; margin-top: 2px; }
+        .stat-card.pending .stat-num { color: var(--orange); }
+        .stat-card.approved .stat-num { color: var(--green); }
+        .stat-card.rejected .stat-num { color: var(--red); }
+
+        /* ── Toolbar ── */
+        .toolbar {
+            display: flex; align-items: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap;
+        }
+        .filter-tabs { display: flex; gap: 6px; }
+        .ftab {
+            background: var(--surface2); border: 1px solid var(--border);
+            color: var(--muted); padding: 7px 16px; border-radius: 8px;
+            font-size: .83rem; font-weight: 500; cursor: pointer; transition: all .2s;
+        }
+        .ftab.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+        .search-input {
+            flex: 1; min-width: 200px; background: var(--surface2);
+            border: 1px solid var(--border); border-radius: 10px;
+            color: var(--text); padding: 8px 14px; font-size: .88rem;
+            outline: none; transition: border .2s;
+        }
+        .search-input:focus { border-color: var(--accent); }
+        .export-group { display: flex; gap: 8px; margin-left: auto; }
+        .btn-export {
+            background: var(--surface2); border: 1px solid var(--border);
+            color: var(--text); padding: 8px 16px; border-radius: 9px;
+            font-size: .83rem; font-weight: 500; cursor: pointer; transition: all .2s;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .btn-export:hover { border-color: var(--accent); color: var(--accent); }
+
+        /* ── Submission cards ── */
+        #sub-list { display: flex; flex-direction: column; gap: 14px; }
+        .sub-card {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: var(--radius); padding: 20px 22px;
+            transition: border-color .2s;
+            animation: fadeIn .25s ease;
+        }
+        .sub-card:hover { border-color: rgba(108,99,255,.3); }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+        .sub-header { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 12px; }
+        .sub-text { flex: 1; font-size: .95rem; line-height: 1.6; word-break: break-word; }
+        .sub-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+        .label-badge {
+            padding: 3px 10px; border-radius: 6px; font-size: .75rem; font-weight: 700;
+            letter-spacing: .04em; text-transform: uppercase;
+        }
+        .lb-normal   { background: rgba(34,197,94,.15);  color: var(--green); }
+        .lb-offensive { background: rgba(245,158,11,.15); color: var(--orange); }
+        .lb-hateful  { background: rgba(239,68,68,.15);  color: var(--red); }
+        .lb-approved { background: rgba(34,197,94,.15);  color: var(--green); }
+        .lb-rejected { background: rgba(239,68,68,.15);  color: var(--red); }
+        .lb-pending  { background: rgba(245,158,11,.15); color: var(--orange); }
+
+        .sub-date { color: var(--muted); font-size: .75rem; }
+        .sub-note { color: var(--muted); font-size: .82rem; font-style: italic; margin-top: 8px; padding-left: 12px; border-left: 2px solid var(--border); }
+
+        .action-row { display: flex; align-items: center; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+        .final-label-select {
+            background: var(--surface2); border: 1px solid var(--border);
+            color: var(--text); padding: 7px 12px; border-radius: 8px;
+            font-size: .83rem; cursor: pointer;
+        }
+        .btn-approve, .btn-reject {
+            padding: 8px 18px; border-radius: 9px; font-size: .83rem;
+            font-weight: 600; cursor: pointer; border: none; transition: opacity .2s;
+        }
+        .btn-approve { background: var(--green); color: #fff; }
+        .btn-reject  { background: var(--red);   color: #fff; }
+        .btn-approve:hover, .btn-reject:hover { opacity: .85; }
+        .btn-approve:disabled, .btn-reject:disabled { opacity: .4; cursor: default; }
+
+        .admin-note-input {
+            flex: 1; min-width: 180px; background: var(--surface2);
+            border: 1px solid var(--border); border-radius: 8px;
+            color: var(--text); padding: 7px 12px; font-size: .83rem;
+            outline: none; transition: border .2s;
+        }
+        .admin-note-input:focus { border-color: var(--accent); }
+
+        .reviewed-badge {
+            display: flex; align-items: center; gap: 8px;
+            padding: 8px 14px; border-radius: 9px; font-size: .83rem; font-weight: 600;
+        }
+        .reviewed-approved { background: rgba(34,197,94,.1); color: var(--green); border: 1px solid rgba(34,197,94,.2); }
+        .reviewed-rejected { background: rgba(239,68,68,.1);  color: var(--red);   border: 1px solid rgba(239,68,68,.2); }
+
+        /* ── Empty state ── */
+        .empty-state {
+            text-align: center; padding: 60px 20px; color: var(--muted);
+            display: none;
+        }
+        .empty-state svg { width: 48px; height: 48px; margin-bottom: 14px; opacity: .4; }
+        .empty-state p { font-size: .9rem; }
+
+        /* ── Loading spinner ── */
+        .loading-state { text-align: center; padding: 60px; color: var(--muted); }
+        .spin {
+            display: inline-block; width: 28px; height: 28px;
+            border: 3px solid var(--border); border-top-color: var(--accent);
+            border-radius: 50%; animation: spin .7s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── Toast ── */
+        #toast {
+            position: fixed; bottom: 28px; right: 28px; z-index: 999;
+            background: var(--surface2); border: 1px solid var(--border);
+            border-radius: 12px; padding: 14px 20px; font-size: .88rem;
+            display: none; align-items: center; gap: 10px;
+            box-shadow: 0 8px 32px rgba(0,0,0,.5);
+            animation: slideUp .3s ease;
+        }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+
+        @media (max-width: 700px) {
+            .stats-row { grid-template-columns: repeat(2, 1fr); }
+            .topbar { padding: 0 16px; }
+            .page-wrap { padding: 20px 14px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="bg-canvas">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+</div>
+
+<!-- ── LOGIN SCREEN ── -->
+<div id="login-screen">
+    <div class="login-box">
+        <div class="login-logo">Sabda<span>AI</span></div>
+        <div class="login-sub">Admin Panel — Data Review</div>
+        <div>
+            <label for="admin-pw-input">Admin Password</label>
+            <input type="password" id="admin-pw-input" placeholder="Enter your admin password" onkeydown="if(event.key==='Enter') doLogin()">
+        </div>
+        <div id="login-error">❌ Wrong password. Please try again.</div>
+        <button class="btn-login" onclick="doLogin()">Sign In →</button>
+    </div>
+</div>
+
+<!-- ── MAIN PANEL ── -->
+<div id="main-panel">
+    <nav class="topbar">
+        <div class="topbar-brand">Sabda<span>AI</span> <span style="font-weight:400;font-size:.85rem;color:var(--muted)">/ Admin</span></div>
+        <div class="topbar-right">
+            <span class="pill-badge pending" id="pending-badge">⏳ 0 Pending</span>
+            <a href="/" style="text-decoration:none">
+                <button class="btn-logout">← Back to App</button>
+            </a>
+            <button class="btn-logout" onclick="doLogout()">Sign Out</button>
+        </div>
+    </nav>
+
+    <div class="page-wrap">
+
+        <!-- Stats row -->
+        <div class="stats-row">
+            <div class="stat-card pending">
+                <div class="stat-num" id="s-pending">—</div>
+                <div class="stat-lbl">Pending Review</div>
+            </div>
+            <div class="stat-card approved">
+                <div class="stat-num" id="s-approved">—</div>
+                <div class="stat-lbl">Approved</div>
+            </div>
+            <div class="stat-card rejected">
+                <div class="stat-num" id="s-rejected">—</div>
+                <div class="stat-lbl">Rejected</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-num" id="s-dataset">—</div>
+                <div class="stat-lbl">In Approved Dataset</div>
+            </div>
+        </div>
+
+        <!-- Toolbar -->
+        <div class="toolbar">
+            <div class="filter-tabs">
+                <button class="ftab on" data-filter="pending" onclick="setFilter('pending', this)">⏳ Pending</button>
+                <button class="ftab" data-filter="approved" onclick="setFilter('approved', this)">✅ Approved</button>
+                <button class="ftab" data-filter="rejected" onclick="setFilter('rejected', this)">❌ Rejected</button>
+                <button class="ftab" data-filter="all" onclick="setFilter('all', this)">All</button>
+            </div>
+            <input class="search-input" id="search-input" placeholder="Search submissions..." oninput="renderFiltered()">
+            <div class="export-group">
+                <button class="btn-export" onclick="exportData('json')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
+                    JSON
+                </button>
+                <button class="btn-export" onclick="exportData('csv')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
+                    CSV
+                </button>
+                <button class="btn-export" onclick="loadData()" title="Refresh">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
+                    Refresh
+                </button>
+            </div>
+        </div>
+
+        <!-- Submission list -->
+        <div id="sub-list">
+            <div class="loading-state"><div class="spin"></div></div>
+        </div>
+
+        <div class="empty-state" id="empty-state">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"/>
+            </svg>
+            <p>No submissions in this category.</p>
+        </div>
+    </div>
+</div>
+
+<!-- ── TOAST ── -->
+<div id="toast">
+    <span id="toast-icon">✅</span>
+    <span id="toast-msg"></span>
+</div>
+
+<script>
+let ADMIN_PW = '';
+let allSubmissions = [];
+let currentFilter = 'pending';
+
+// ── Auth ──────────────────────────────────────────────────────
+function doLogin() {
+    const pw = document.getElementById('admin-pw-input').value.trim();
+    if (!pw) return;
+    ADMIN_PW = pw;
+    // Attempt a real request to validate
+    fetch(`/api/admin/stats?password=${encodeURIComponent(pw)}`)
+        .then(r => {
+            if (r.status === 401) {
+                document.getElementById('login-error').style.display = 'block';
+                ADMIN_PW = '';
+            } else {
+                return r.json().then(data => {
+                    document.getElementById('login-screen').style.display = 'none';
+                    document.getElementById('main-panel').style.display = 'block';
+                    updateStats(data);
+                    loadData();
+                });
+            }
+        })
+        .catch(() => {
+            document.getElementById('login-error').textContent = '❌ Could not connect to server.';
+            document.getElementById('login-error').style.display = 'block';
+        });
+}
+
+function doLogout() {
+    ADMIN_PW = '';
+    allSubmissions = [];
+    document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('main-panel').style.display = 'none';
+    document.getElementById('admin-pw-input').value = '';
+    document.getElementById('login-error').style.display = 'none';
+}
+
+// ── Data loading ───────────────────────────────────────────────
+function loadData() {
+    document.getElementById('sub-list').innerHTML = '<div class="loading-state"><div class="spin"></div></div>';
+    document.getElementById('empty-state').style.display = 'none';
+
+    // Load stats + submissions in parallel
+    Promise.all([
+        fetch(`/api/admin/stats?password=${encodeURIComponent(ADMIN_PW)}`).then(r => r.json()),
+        fetch(`/api/admin/submissions?password=${encodeURIComponent(ADMIN_PW)}&status_filter=all`).then(r => r.json())
+    ]).then(([stats, data]) => {
+        updateStats(stats);
+        allSubmissions = data.submissions || [];
+        renderFiltered();
+    }).catch(err => {
+        document.getElementById('sub-list').innerHTML = `<div class="loading-state" style="color:var(--red)">Error loading data: ${err.message}</div>`;
+    });
+}
+
+function updateStats(data) {
+    document.getElementById('s-pending').textContent  = data.pending  ?? '—';
+    document.getElementById('s-approved').textContent = data.approved ?? '—';
+    document.getElementById('s-rejected').textContent = data.rejected ?? '—';
+    document.getElementById('s-dataset').textContent  = data.approved_data_entries ?? '—';
+    const pending = data.pending ?? 0;
+    document.getElementById('pending-badge').textContent = `⏳ ${pending} Pending`;
+}
+
+// ── Filter & Render ────────────────────────────────────────────
+function setFilter(filter, btn) {
+    currentFilter = filter;
+    document.querySelectorAll('.ftab').forEach(b => b.classList.remove('on'));
+    btn.classList.add('on');
+    renderFiltered();
+}
+
+function renderFiltered() {
+    const q = document.getElementById('search-input').value.toLowerCase();
+    let filtered = allSubmissions.filter(s => {
+        const statusMatch = currentFilter === 'all' || s.status === currentFilter;
+        const textMatch = !q || s.text.toLowerCase().includes(q) || (s.note || '').toLowerCase().includes(q);
+        return statusMatch && textMatch;
+    });
+    renderCards(filtered);
+}
+
+function renderCards(subs) {
+    const list = document.getElementById('sub-list');
+    const empty = document.getElementById('empty-state');
+
+    if (subs.length === 0) {
+        list.innerHTML = '';
+        empty.style.display = 'block';
+        return;
+    }
+    empty.style.display = 'none';
+
+    list.innerHTML = subs.map(s => buildCard(s)).join('');
+}
+
+function buildCard(s) {
+    const isPending = s.status === 'pending';
+    const date = s.submitted_at ? new Date(s.submitted_at).toLocaleString() : '—';
+    const labelBadge = `<span class="label-badge lb-${s.suggested_label.toLowerCase()}">Suggested: ${s.suggested_label}</span>`;
+    const statusBadge = `<span class="label-badge lb-${s.status}">${s.status}</span>`;
+    const noteHtml = s.note ? `<div class="sub-note">💬 ${escHtml(s.note)}</div>` : '';
+
+    let actionHtml = '';
+    if (isPending) {
+        actionHtml = `
+        <div class="action-row">
+            <select class="final-label-select" id="fl-${s.id}">
+                <option value="Normal"   ${s.suggested_label==='Normal'   ? 'selected' : ''}>Normal</option>
+                <option value="Offensive"${s.suggested_label==='Offensive'? 'selected' : ''}>Offensive</option>
+                <option value="Hateful"  ${s.suggested_label==='Hateful'  ? 'selected' : ''}>Hateful</option>
+            </select>
+            <input class="admin-note-input" id="an-${s.id}" placeholder="Optional admin note…">
+            <button class="btn-approve" onclick="review('${s.id}','approve')">✅ Approve</button>
+            <button class="btn-reject"  onclick="review('${s.id}','reject')">❌ Reject</button>
+        </div>`;
+    } else {
+        const cls = s.status === 'approved' ? 'reviewed-approved' : 'reviewed-rejected';
+        const icon = s.status === 'approved' ? '✅' : '❌';
+        const reviewedDate = s.reviewed_at ? new Date(s.reviewed_at).toLocaleString() : '';
+        actionHtml = `
+        <div class="action-row">
+            <div class="reviewed-badge ${cls}">${icon} ${s.status.charAt(0).toUpperCase() + s.status.slice(1)} as <strong>${s.final_label || s.suggested_label}</strong></div>
+            ${reviewedDate ? `<span class="sub-date">reviewed ${reviewedDate}</span>` : ''}
+            ${s.admin_note ? `<span class="sub-date">— ${escHtml(s.admin_note)}</span>` : ''}
+        </div>`;
+    }
+
+    return `
+    <div class="sub-card" id="card-${s.id}">
+        <div class="sub-header">
+            <div class="sub-text">${escHtml(s.text)}</div>
+        </div>
+        ${noteHtml}
+        <div class="sub-meta">
+            ${labelBadge}
+            ${statusBadge}
+            <span class="sub-date">🕐 ${date}</span>
+            <span class="sub-date" style="font-family:monospace;font-size:.7rem;opacity:.5">${s.id.slice(0,8)}…</span>
+        </div>
+        ${actionHtml}
+    </div>`;
+}
+
+// ── Review action ─────────────────────────────────────────────
+async function review(id, action) {
+    const card = document.getElementById(`card-${id}`);
+    const finalLabel = document.getElementById(`fl-${id}`)?.value || 'Normal';
+    const adminNote  = document.getElementById(`an-${id}`)?.value || '';
+
+    // Disable buttons
+    card.querySelectorAll('.btn-approve,.btn-reject').forEach(b => b.disabled = true);
+
+    try {
+        const res = await fetch(`/api/admin/review?password=${encodeURIComponent(ADMIN_PW)}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ submission_id: id, action, final_label: finalLabel, admin_note: adminNote })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Server error');
+
+        showToast(action === 'approve' ? '✅ Approved and saved to dataset!' : '❌ Submission rejected.', action === 'approve');
+        // Update local state
+        const idx = allSubmissions.findIndex(s => s.id === id);
+        if (idx !== -1) {
+            allSubmissions[idx].status = action + 'd';
+            allSubmissions[idx].final_label = finalLabel;
+            allSubmissions[idx].admin_note = adminNote;
+            allSubmissions[idx].reviewed_at = new Date().toISOString();
+        }
+        renderFiltered();
+        // Refresh stats
+        fetch(`/api/admin/stats?password=${encodeURIComponent(ADMIN_PW)}`).then(r => r.json()).then(updateStats);
+    } catch(err) {
+        showToast('❌ Error: ' + err.message, false);
+        card.querySelectorAll('.btn-approve,.btn-reject').forEach(b => b.disabled = false);
+    }
+}
+
+// ── Export ────────────────────────────────────────────────────
+function exportData(fmt) {
+    window.open(`/api/admin/export?password=${encodeURIComponent(ADMIN_PW)}&file_format=${fmt}`, '_blank');
+}
+
+// ── Helpers ───────────────────────────────────────────────────
+function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+let toastTimer;
+function showToast(msg, ok = true) {
+    const t = document.getElementById('toast');
+    document.getElementById('toast-msg').textContent = msg;
+    document.getElementById('toast-icon').textContent = ok ? '✅' : '⚠️';
+    t.style.display = 'flex';
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { t.style.display = 'none'; }, 3500);
+}
+
+// Enter key on login
+document.getElementById('admin-pw-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') doLogin();
+});
+</script>
+</body>
+</html>

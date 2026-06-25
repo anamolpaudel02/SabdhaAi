@@ -57,16 +57,22 @@ client = None
 
 if GEMINI_API_KEY:
     try:
-        from google import genai
+        from google import genai  # pylint: disable=import-outside-toplevel
         client = genai.Client(api_key=GEMINI_API_KEY)
-    except Exception:
+    except Exception:  # pylint: disable=broad-exception-caught
         pass
 
 FEEDBACK_FILE = "feedback.jsonl"
+SUBMISSIONS_FILE = "submissions.jsonl"
+APPROVED_FILE = "approved_data.jsonl"
+
+# Admin password — change this to something strong before deploying!
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "sabdaai-admin-2024")
+
 feedback_overrides = {}
 
+
 def load_feedback_overrides():
-    global feedback_overrides
     if os.path.exists(FEEDBACK_FILE):
         try:
             with open(FEEDBACK_FILE, "r", encoding="utf-8") as f:
@@ -77,7 +83,7 @@ def load_feedback_overrides():
                         correct = data.get("correct")
                         if text and correct in ["Normal", "Offensive", "Hateful"]:
                             feedback_overrides[text.lower()] = correct
-        except Exception:
+        except Exception:  # pylint: disable=broad-exception-caught
             pass
 
 load_feedback_overrides()
@@ -154,7 +160,7 @@ def analyze_text_internal(text: str) -> ClassificationResult:
             return ClassificationResult(**local_result)
 
         return gemini_result
-    except Exception:
+    except Exception:  # pylint: disable=broad-exception-caught
         local_result = classify_local(content)
         return ClassificationResult(**local_result)
 
@@ -173,9 +179,9 @@ async def analyze(request: AnalyzeRequest):
     try:
         return await run_in_threadpool(analyze_text_internal, content)
     except RuntimeError as e:
-        raise HTTPException(status_code=503, detail=str(e))
+        raise HTTPException(status_code=503, detail=str(e)) from e
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 @app.post("/api/analyze-batch")
 async def analyze_batch(request: AnalyzeBatchRequest):
@@ -188,7 +194,7 @@ async def analyze_batch(request: AnalyzeBatchRequest):
     results = await asyncio.gather(*tasks, return_exceptions=True)
     
     processed_results = []
-    for i, res in enumerate(results):
+    for _, res in enumerate(results):
         if isinstance(res, Exception):
             processed_results.append(ClassificationResult(
                 label="Normal",
@@ -222,7 +228,7 @@ async def submit_feedback(request: FeedbackRequest):
         feedback_overrides[text.lower()] = correct
         return {"status": "success", "message": "Feedback saved and override updated"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to save feedback: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to save feedback: {str(e)}") from e
 
 @app.post("/api/suggest-clean", response_model=SuggestCleanResponse)
 async def suggest_clean(request: AnalyzeRequest):
@@ -258,7 +264,7 @@ async def suggest_clean(request: AnalyzeRequest):
         
         return SuggestCleanResponse(original=content, cleaned=cleaned, changes=changes)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 def _is_devanagari_or_valid(line):
     cleaned = line.strip()
@@ -280,7 +286,7 @@ async def analyze_screenshot(file: UploadFile = File(...)):
         lines = raw_text.splitlines()
         extracted_lines = [l.strip() for l in lines if _is_devanagari_or_valid(l)]
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"OCR processing failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"OCR processing failed: {str(e)}") from e
 
     if not extracted_lines:
         return {"extracted_count": 0, "results": []}
@@ -316,3 +322,199 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 @app.get("/")
 def home():
     return FileResponse("static/index.html")
+
+@app.get("/admin")
+def admin_page():
+    return FileResponse("static/admin.html")
+
+
+# ─────────────────────────────────────────────────────────────
+# CONTRIBUTION PIPELINE
+# ─────────────────────────────────────────────────────────────
+
+class ContributeRequest(BaseModel):
+    text: str
+    suggested_label: Literal["Normal", "Offensive", "Hateful"]
+    note: str = ""          # optional context note from contributor
+
+class ReviewRequest(BaseModel):
+    submission_id: str
+    action: Literal["approve", "reject"]
+    final_label: Literal["Normal", "Offensive", "Hateful"] = "Normal"
+    admin_note: str = ""
+
+def _check_admin(request_password: str):
+    """Raise 401 if admin password is wrong."""
+    if request_password != ADMIN_PASSWORD:
+        raise HTTPException(status_code=401, detail="Unauthorized: wrong admin password")
+
+
+@app.post("/api/contribute")
+async def contribute(request: ContributeRequest):
+    """
+    Public endpoint — anyone can submit a text sample with a suggested label.
+    The submission is saved to submissions.jsonl for admin review.
+    """
+    text = request.text.strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="Text cannot be empty")
+    if len(text) > 1000:
+        raise HTTPException(status_code=400, detail="Text too long (max 1000 chars)")
+
+    import uuid, datetime
+    entry = {
+        "id":              str(uuid.uuid4()),
+        "text":            text,
+        "suggested_label": request.suggested_label,
+        "note":            request.note.strip()[:500],
+        "submitted_at":    datetime.datetime.utcnow().isoformat() + "Z",
+        "status":          "pending",   # pending | approved | rejected
+    }
+    try:
+        with open(SUBMISSIONS_FILE, "a", encoding="utf-8") as f:
+            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+        return {"status": "success", "message": "Thank you! Your submission is under review."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save submission: {str(e)}") from e
+
+
+@app.get("/api/admin/submissions")
+def admin_list_submissions(
+    password: str = "",
+    status_filter: str = "pending"
+):
+    """Admin-only: list all submissions, filtered by status."""
+    _check_admin(password)
+    results = []
+    if os.path.exists(SUBMISSIONS_FILE):
+        with open(SUBMISSIONS_FILE, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    entry = json.loads(line)
+                    if status_filter == "all" or entry.get("status") == status_filter:
+                        results.append(entry)
+                except json.JSONDecodeError:
+                    continue
+    # Newest first
+    results.sort(key=lambda x: x.get("submitted_at", ""), reverse=True)
+    return {"total": len(results), "submissions": results}
+
+
+@app.post("/api/admin/review")
+async def admin_review(request: ReviewRequest, password: str = ""):
+    """
+    Admin-only: approve or reject a pending submission.
+    Approved entries are also saved to approved_data.jsonl.
+    """
+    _check_admin(password)
+
+    if not os.path.exists(SUBMISSIONS_FILE):
+        raise HTTPException(status_code=404, detail="No submissions file found")
+
+    # Read all, find & update the target entry
+    lines = []
+    found = False
+    import datetime
+    with open(SUBMISSIONS_FILE, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                entry = json.loads(line)
+                if entry.get("id") == request.submission_id:
+                    found = True
+                    entry["status"]       = request.action + "d"   # "approved" or "rejected"
+                    entry["final_label"]  = request.final_label
+                    entry["admin_note"]   = request.admin_note
+                    entry["reviewed_at"]  = datetime.datetime.utcnow().isoformat() + "Z"
+                    if request.action == "approve":
+                        # Also write to approved_data.jsonl
+                        approved_entry = {
+                            "text":        entry["text"],
+                            "label":       request.final_label,
+                            "source":      "community",
+                            "approved_at": entry["reviewed_at"],
+                        }
+                        with open(APPROVED_FILE, "a", encoding="utf-8") as af:
+                            af.write(json.dumps(approved_entry, ensure_ascii=False) + "\n")
+                lines.append(json.dumps(entry, ensure_ascii=False))
+            except json.JSONDecodeError:
+                lines.append(line)
+
+    if not found:
+        raise HTTPException(status_code=404, detail="Submission ID not found")
+
+    # Rewrite the submissions file with updated status
+    with open(SUBMISSIONS_FILE, "w", encoding="utf-8") as f:
+        f.write("\n".join(lines) + "\n")
+
+    return {"status": "success", "action": request.action + "d", "id": request.submission_id}
+
+
+@app.get("/api/admin/export")
+def admin_export(password: str = "", file_format: str = "json"):
+    """
+    Admin-only: download all approved submissions as JSON or CSV.
+    """
+    _check_admin(password)
+    approved = []
+    if os.path.exists(APPROVED_FILE):
+        with open(APPROVED_FILE, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line:
+                    try:
+                        approved.append(json.loads(line))
+                    except json.JSONDecodeError:
+                        continue
+
+    if file_format == "csv":
+        import csv, io as _io
+        output = _io.StringIO()
+        writer = csv.DictWriter(output, fieldnames=["text", "label", "source", "approved_at"])
+        writer.writeheader()
+        writer.writerows(approved)
+        from fastapi.responses import Response
+        return Response(
+            content=output.getvalue().encode("utf-8"),
+            media_type="text/csv",
+            headers={"Content-Disposition": "attachment; filename=sabdaai_approved_data.csv"}
+        )
+
+    # Default: JSON
+    from fastapi.responses import Response
+    return Response(
+        content=json.dumps(approved, ensure_ascii=False, indent=2).encode("utf-8"),
+        media_type="application/json",
+        headers={"Content-Disposition": "attachment; filename=sabdaai_approved_data.json"}
+    )
+
+@app.get("/api/admin/stats")
+def admin_stats(password: str = ""):
+    """Admin-only: quick stats about submission pipeline."""
+    _check_admin(password)
+    counts = {"pending": 0, "approved": 0, "rejected": 0, "total": 0}
+    if os.path.exists(SUBMISSIONS_FILE):
+        with open(SUBMISSIONS_FILE, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    entry = json.loads(line)
+                    status = entry.get("status", "pending")
+                    if status in counts:
+                        counts[status] += 1
+                    counts["total"] += 1
+                except json.JSONDecodeError:
+                    continue
+    approved_count = 0
+    if os.path.exists(APPROVED_FILE):
+        with open(APPROVED_FILE, "r", encoding="utf-8") as f:
+            approved_count = sum(1 for line in f if line.strip())
+    counts["approved_data_entries"] = approved_count
+    return counts
