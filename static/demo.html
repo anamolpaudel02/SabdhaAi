@@ -1,0 +1,1726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SabdaAI — Interactive Demo Video Simulator</title>
+    <meta name="description" content="Watch the interactive, animated feature demonstration of SabdaAI - Nepali Language Safety Shield.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg: #090a0f;
+            --surface: #10121d;
+            --surface2: #161927;
+            --border: rgba(255,255,255,0.06);
+            --border-glow: rgba(168,85,247,0.3);
+            --text: #e2e8f0;
+            --muted: #64748b;
+            --primary: #8b5cf6;
+            --primary-glow: rgba(139,92,246,0.2);
+            --secondary: #ec4899;
+            --secondary-glow: rgba(236,72,153,0.15);
+            --green: #10b981;
+            --orange: #f59e0b;
+            --red: #ef4444;
+            --radius-lg: 18px;
+            --radius-md: 12px;
+            --font-main: 'Inter', sans-serif;
+            --font-heading: 'Outfit', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: var(--font-main);
+            min-height: 100vh;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ── Ambient Background Orbs ── */
+        .bg-canvas {
+            position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden;
+        }
+        .orb {
+            position: absolute; border-radius: 50%; filter: blur(140px); opacity: 0.12;
+            animation: orbFloat 15s ease-in-out infinite alternate;
+        }
+        .orb-1 { width: 600px; height: 600px; background: var(--primary); top: -200px; left: -150px; }
+        .orb-2 { width: 500px; height: 500px; background: var(--secondary); bottom: -150px; right: -100px; animation-delay: -5s; }
+        .orb-3 { width: 400px; height: 400px; background: #3b82f6; top: 40%; left: 50%; transform: translate(-50%, -50%); opacity: 0.06; }
+
+        @keyframes orbFloat {
+            0% { transform: translateY(0) scale(1); }
+            100% { transform: translateY(30px) scale(1.1); }
+        }
+
+        /* ── Container Layout ── */
+        .wrap {
+            max-width: 1240px; margin: 0 auto; padding: 24px 20px 48px;
+            position: relative; z-index: 1; width: 100%;
+            display: flex; flex-direction: column; gap: 24px;
+        }
+
+        /* ── Header ── */
+        .header {
+            display: flex; align-items: center; justify-content: space-between;
+            border-bottom: 1px solid var(--border); padding-bottom: 20px;
+        }
+        .brand {
+            display: flex; align-items: center; gap: 12px;
+        }
+        .brand-icon {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            width: 42px; height: 42px; border-radius: 11px;
+            display: flex; align-items: center; justify-content: center;
+            color: #fff; box-shadow: 0 4px 15px var(--primary-glow);
+        }
+        .brand-icon svg { width: 22px; height: 22px; }
+        .brand-name {
+            font-family: var(--font-heading); font-size: 1.6rem; font-weight: 800; letter-spacing: -0.02em;
+        }
+        .brand-name span {
+            background: linear-gradient(to right, #a78bfa, #f472b6);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .brand-sub {
+            font-size: 0.8rem; color: var(--muted); margin-top: 1px; font-weight: 500;
+        }
+        .header-btn {
+            background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+            color: var(--text); padding: 8px 16px; border-radius: 10px;
+            font-size: 0.85rem; font-weight: 600; cursor: pointer; text-decoration: none;
+            transition: all 0.2s; display: flex; align-items: center; gap: 8px;
+        }
+        .header-btn:hover {
+            background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.15);
+            transform: translateY(-1px);
+        }
+
+        /* ── Showcase Grid ── */
+        .grid {
+            display: grid; grid-template-columns: 1fr 340px; gap: 24px;
+        }
+
+        @media (max-width: 1024px) {
+            .grid { grid-template-columns: 1fr; }
+        }
+
+        /* ── Video Player Window ── */
+        .player-panel {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: var(--radius-lg); overflow: hidden;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5); display: flex; flex-direction: column;
+            position: relative;
+        }
+        .player-topbar {
+            background: #0d0f17; border-bottom: 1px solid var(--border);
+            height: 48px; display: flex; align-items: center; justify-content: space-between;
+            padding: 0 16px;
+        }
+        .window-dots { display: flex; gap: 8px; }
+        .dot { width: 11px; height: 11px; border-radius: 50%; }
+        .dot-r { background: #ef4444; }
+        .dot-y { background: #f59e0b; }
+        .dot-g { background: #10b981; }
+        .player-title {
+            font-size: 0.8rem; color: var(--muted); font-weight: 600;
+            display: flex; align-items: center; gap: 6px; font-family: var(--font-heading);
+            letter-spacing: 0.05em; text-transform: uppercase;
+        }
+        .player-title span { color: var(--primary); }
+        .player-badge {
+            background: rgba(139,92,246,0.15); color: #a78bfa;
+            border: 1px solid rgba(139,92,246,0.3); font-size: 0.72rem;
+            font-weight: 700; padding: 2px 8px; border-radius: 6px;
+            animation: pulseGlow 2s infinite alternate;
+        }
+
+        @keyframes pulseGlow {
+            0% { box-shadow: 0 0 5px rgba(139,92,246,0.2); }
+            100% { box-shadow: 0 0 15px rgba(139,92,246,0.5); }
+        }
+
+        /* Video Screen Viewport */
+        .player-viewport {
+            aspect-ratio: 16/9; background: #08090d; position: relative;
+            overflow: hidden; display: flex; align-items: center; justify-content: center;
+        }
+        .screen-content {
+            width: 100%; height: 100%; position: absolute; inset: 0;
+            display: none; align-items: center; justify-content: center;
+            opacity: 0; transition: opacity 0.4s ease;
+        }
+        .screen-content.active {
+            display: flex; opacity: 1;
+        }
+
+        /* ── TIMELINE CONTROLS ── */
+        .player-controls {
+            background: #0d0f17; border-top: 1px solid var(--border);
+            padding: 12px 18px; display: flex; flex-direction: column; gap: 10px;
+        }
+        .timeline-row {
+            display: flex; align-items: center; gap: 12px; width: 100%;
+        }
+        .timeline-track-wrap {
+            flex: 1; height: 18px; display: flex; align-items: center; cursor: pointer;
+            position: relative;
+        }
+        .timeline-track {
+            width: 100%; height: 6px; background: rgba(255,255,255,0.08);
+            border-radius: 999px; position: relative; transition: height 0.15s;
+        }
+        .timeline-track-wrap:hover .timeline-track {
+            height: 8px;
+        }
+        .timeline-progress {
+            height: 100%; background: linear-gradient(90deg, var(--primary), var(--secondary));
+            border-radius: 999px; width: 0%; position: absolute; left: 0; top: 0;
+        }
+        .timeline-handle {
+            width: 14px; height: 14px; background: #fff; border-radius: 50%;
+            position: absolute; top: 50%; transform: translate(-50%, -50%);
+            left: 0%; box-shadow: 0 0 8px rgba(0,0,0,0.5);
+            opacity: 0; transition: opacity 0.15s; pointer-events: none;
+        }
+        .timeline-track-wrap:hover .timeline-handle {
+            opacity: 1;
+        }
+        
+        /* Timeline chapter ticks */
+        .chapter-tick {
+            position: absolute; top: 0; bottom: 0; width: 2px;
+            background: rgba(255,255,255,0.25); z-index: 2; pointer-events: none;
+        }
+
+        .controls-buttons {
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .ctrl-left, .ctrl-right { display: flex; align-items: center; gap: 16px; }
+        .ctrl-btn {
+            background: transparent; border: none; color: #94a3b8; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: color 0.2s, transform 0.1s;
+        }
+        .ctrl-btn:hover { color: #fff; }
+        .ctrl-btn:active { transform: scale(0.95); }
+        .ctrl-btn svg { width: 20px; height: 20px; }
+        
+        .time-display {
+            font-size: 0.78rem; color: var(--muted); font-weight: 600;
+            font-variant-numeric: tabular-nums;
+        }
+        
+        .speed-btn {
+            background: rgba(255,255,255,0.05); border: 1px solid var(--border);
+            color: #94a3b8; font-size: 0.75rem; font-weight: 700;
+            padding: 4px 10px; border-radius: 6px; cursor: pointer; transition: all 0.2s;
+        }
+        .speed-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
+
+        .overdrive-wrap {
+            display: flex; align-items: center; gap: 8px; font-size: 0.78rem; font-weight: 600;
+            color: var(--muted); border-left: 1px solid var(--border); padding-left: 14px;
+        }
+        .toggle-switch {
+            position: relative; display: inline-block; width: 34px; height: 18px;
+        }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .toggle-slider {
+            position: absolute; cursor: pointer; inset: 0; background-color: rgba(255,255,255,0.08);
+            transition: .3s; border-radius: 34px; border: 1px solid var(--border);
+        }
+        .toggle-slider:before {
+            position: absolute; content: ""; height: 12px; width: 12px; left: 2px; bottom: 2px;
+            background-color: #94a3b8; transition: .3s; border-radius: 50%;
+        }
+        input:checked + .toggle-slider { background-color: var(--primary); }
+        input:checked + .toggle-slider:before {
+            transform: translateX(16px); background-color: #fff;
+        }
+        input:checked + .toggle-slider { box-shadow: 0 0 10px rgba(139,92,246,0.4); }
+
+        /* ── SIDEBAR CHAPTERS ── */
+        .sidebar {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: var(--radius-lg); padding: 20px; display: flex;
+            flex-direction: column; gap: 18px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        .sidebar-title {
+            font-family: var(--font-heading); font-size: 1.15rem; font-weight: 700;
+            color: #fff; display: flex; align-items: center; gap: 8px;
+        }
+        .sidebar-title svg { width: 18px; height: 18px; color: var(--secondary); }
+        .chapter-list {
+            display: flex; flex-direction: column; gap: 10px;
+        }
+        .chapter-card {
+            background: rgba(255,255,255,0.02); border: 1px solid var(--border);
+            border-radius: var(--radius-md); padding: 12px 14px; cursor: pointer;
+            transition: all 0.2s; display: flex; flex-direction: column; gap: 4px;
+            text-align: left; position: relative; overflow: hidden;
+        }
+        .chapter-card:hover {
+            background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.1);
+            transform: translateX(2px);
+        }
+        .chapter-card.active {
+            background: rgba(139,92,246,0.06); border-color: rgba(139,92,246,0.35);
+        }
+        .chapter-card.active::before {
+            content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+            background: linear-gradient(to bottom, var(--primary), var(--secondary));
+        }
+        .chapter-meta {
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .chapter-num {
+            font-size: 0.72rem; font-weight: 700; color: var(--muted);
+            letter-spacing: 0.05em; text-transform: uppercase;
+        }
+        .chapter-card.active .chapter-num { color: var(--primary); }
+        .chapter-time {
+            font-size: 0.75rem; font-weight: 600; color: var(--muted);
+            font-variant-numeric: tabular-nums;
+        }
+        .chapter-name {
+            font-family: var(--font-heading); font-size: 0.92rem; font-weight: 600;
+            color: #f1f5f9;
+        }
+        .chapter-desc {
+            font-size: 0.78rem; color: var(--muted); line-height: 1.4;
+        }
+
+        /* ── MOCK DESIGNS INSIDE VIEWPORT ── */
+        .mock-frame {
+            width: 100%; height: 100%; display: flex; flex-direction: column;
+            background: #0f1016; color: #cbd5e1; font-size: 14px;
+        }
+
+        /* Chapter 1: Intro style */
+        .intro-screen {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            height: 100%; text-align: center; gap: 20px;
+            background: radial-gradient(circle at center, #181135 0%, #08090d 100%);
+            padding: 30px;
+        }
+        .intro-logo {
+            font-family: var(--font-heading); font-size: 3rem; font-weight: 900;
+            letter-spacing: -0.03em; display: flex; align-items: center; gap: 14px;
+            animation: introLogoPulse 3s infinite alternate;
+        }
+        @keyframes introLogoPulse {
+            0% { transform: scale(0.98); filter: drop-shadow(0 0 10px rgba(139,92,246,0.3)); }
+            100% { transform: scale(1.02); filter: drop-shadow(0 0 25px rgba(236,72,153,0.5)); }
+        }
+        .intro-logo span {
+            background: linear-gradient(to right, #c084fc, #f472b6);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .intro-sub {
+            font-family: var(--font-heading); font-size: 1.25rem; font-weight: 600;
+            color: #94a3b8; max-width: 500px; line-height: 1.4;
+        }
+        .intro-features {
+            display: flex; gap: 12px; margin-top: 10px;
+        }
+        .feature-pill {
+            background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);
+            padding: 6px 14px; border-radius: 99px; font-size: 0.78rem; font-weight: 600;
+            color: #cbd5e1;
+        }
+
+        /* Chapter 2: Single Analysis Screen */
+        .single-grid {
+            display: grid; grid-template-columns: 1.1fr 0.9fr; height: 100%;
+        }
+        .single-left {
+            border-right: 1px solid var(--border); padding: 20px;
+            display: flex; flex-direction: column; justify-content: space-between;
+        }
+        .single-right {
+            background: #0b0c12; padding: 20px; display: flex; flex-direction: column;
+            justify-content: center; gap: 16px; position: relative;
+        }
+        .mock-title {
+            font-family: var(--font-heading); font-size: 0.95rem; font-weight: 700;
+            color: #fff; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;
+        }
+        .mock-textarea-wrap {
+            background: #141724; border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 8px; padding: 12px; height: 110px; position: relative;
+            display: flex; flex-direction: column; justify-content: space-between;
+        }
+        .mock-textarea {
+            background: transparent; border: none; color: #fff; outline: none;
+            resize: none; width: 100%; height: 65px; font-family: inherit; font-size: 0.88rem;
+        }
+        .mock-danger-bar {
+            height: 4px; width: 100%; background: rgba(255,255,255,0.05);
+            border-radius: 99px; overflow: hidden; margin-top: 8px; display: flex;
+        }
+        .mock-danger-fill {
+            height: 100%; width: 0%; background: var(--green); transition: width 0.3s, background 0.3s;
+        }
+        .mock-danger-label {
+            font-size: 0.68rem; font-weight: 700; color: var(--muted);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .mock-btn-row {
+            display: flex; justify-content: flex-end; margin-top: 12px;
+        }
+        .mock-btn-submit {
+            background: var(--primary); color: #fff; border: none;
+            padding: 8px 18px; border-radius: 8px; font-weight: 600;
+            font-size: 0.82rem; display: flex; align-items: center; gap: 6px;
+            box-shadow: 0 4px 10px rgba(139,92,246,0.3); cursor: default;
+        }
+        
+        /* Result styling */
+        .mock-badge {
+            align-self: flex-start; padding: 4px 12px; border-radius: 6px;
+            font-family: var(--font-heading); font-size: 0.78rem; font-weight: 800;
+            letter-spacing: 0.05em; text-transform: uppercase;
+        }
+        .badge-offensive { background: rgba(245,158,11,0.15); color: var(--orange); border: 1px solid rgba(245,158,11,0.3); }
+        .badge-hateful { background: rgba(239,68,68,0.15); color: var(--red); border: 1px solid rgba(239,68,68,0.3); }
+        .badge-normal { background: rgba(16,185,129,0.15); color: var(--green); border: 1px solid rgba(16,185,129,0.3); }
+        
+        .mock-result-box {
+            background: #141622; border: 1px solid var(--border);
+            border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 8px;
+        }
+        .mock-result-item {
+            display: flex; justify-content: space-between; font-size: 0.8rem;
+        }
+        .mock-result-lbl { color: var(--muted); font-weight: 500; }
+        .mock-result-val { color: #f1f5f9; font-weight: 600; }
+        
+        .mock-sanitize-box {
+            background: rgba(16,185,129,0.06); border: 1px solid rgba(16,185,129,0.25);
+            border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 6px;
+        }
+        .mock-sanitize-title {
+            font-size: 0.75rem; font-weight: 700; color: var(--green);
+            text-transform: uppercase; letter-spacing: 0.05em;
+        }
+        .mock-sanitize-txt {
+            font-size: 0.82rem; color: #fff; font-weight: 500; font-style: italic;
+        }
+
+        /* Chapter 3: Chrome Extension Screen */
+        .ext-screen {
+            display: grid; grid-template-columns: 1.2fr 0.8fr; height: 100%;
+        }
+        .mock-browser {
+            padding: 16px; display: flex; flex-direction: column; gap: 12px;
+            background: #0c0e15; overflow-y: auto; height: 100%;
+        }
+        .browser-header {
+            background: #151825; border: 1px solid var(--border);
+            padding: 6px 12px; border-radius: 6px; display: flex;
+            align-items: center; gap: 8px; font-size: 0.72rem; color: var(--muted);
+        }
+        .browser-url {
+            background: #090a0f; flex: 1; padding: 3px 10px;
+            border-radius: 4px; color: #94a3b8; font-family: monospace;
+        }
+        .feed-post {
+            background: #141724; border: 1px solid var(--border);
+            border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 8px;
+        }
+        .feed-author { font-weight: 700; color: #fff; font-size: 0.82rem; }
+        .feed-content { font-size: 0.85rem; color: #cbd5e1; }
+        .feed-comments {
+            border-top: 1px solid var(--border); margin-top: 6px; padding-top: 8px;
+            display: flex; flex-direction: column; gap: 8px;
+        }
+        .feed-comment {
+            display: flex; gap: 6px; font-size: 0.78rem; position: relative;
+        }
+        .comment-user { font-weight: 700; color: #a78bfa; }
+        .comment-text { color: #cbd5e1; transition: filter 0.3s; }
+        .comment-text.blurred {
+            filter: blur(5px); pointer-events: none; user-select: none;
+        }
+        .censor-badge {
+            position: absolute; left: 0; right: 0; top: 0; bottom: 0;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(239,68,68,0.08); border: 1px dashed rgba(239,68,68,0.4);
+            border-radius: 4px; color: var(--red); font-size: 0.68rem; font-weight: 700;
+            opacity: 0; transform: scale(0.95); transition: all 0.3s;
+        }
+        .censor-badge.active {
+            opacity: 1; transform: none;
+        }
+
+        /* Popup Mock */
+        .popup-wrap {
+            padding: 16px; border-left: 1px solid var(--border);
+            background: #121420; display: flex; flex-direction: column;
+            justify-content: center; gap: 14px;
+        }
+        .popup-box {
+            background: #1a1d30; border: 1px solid rgba(139,92,246,0.3);
+            border-radius: 12px; padding: 16px; display: flex; flex-direction: column;
+            gap: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+        }
+        .popup-header {
+            display: flex; align-items: center; gap: 8px; border-bottom: 1px solid rgba(255,255,255,0.05);
+            padding-bottom: 8px;
+        }
+        .popup-logo { font-family: var(--font-heading); font-weight: 800; font-size: 0.95rem; color: #fff; }
+        .popup-logo span { color: var(--primary); }
+        .popup-row {
+            display: flex; justify-content: space-between; align-items: center;
+            font-size: 0.8rem;
+        }
+        .popup-lbl { font-weight: 600; color: #cbd5e1; }
+
+        /* Chapter 4: Screenshot OCR Screen */
+        .ocr-screen {
+            display: grid; grid-template-columns: 1fr 1fr; height: 100%;
+        }
+        .ocr-left {
+            padding: 20px; display: flex; flex-direction: column;
+            justify-content: center; align-items: center; border-right: 1px solid var(--border);
+        }
+        .ocr-right {
+            padding: 20px; background: #0c0d13; display: flex; flex-direction: column;
+            justify-content: center; gap: 12px;
+        }
+        .ocr-drop-box {
+            width: 100%; height: 160px; border: 2px dashed rgba(255,255,255,0.08);
+            border-radius: 10px; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; gap: 8px; color: var(--muted);
+            position: relative; overflow: hidden; background: #131521;
+        }
+        .ocr-drop-box.file-loaded {
+            border: 1px solid rgba(139,92,246,0.3);
+        }
+        .ocr-mock-img {
+            max-width: 90%; max-height: 90%; border-radius: 6px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.5); opacity: 0; transform: translateY(10px);
+            transition: all 0.4s;
+        }
+        .ocr-mock-img.active {
+            opacity: 1; transform: none;
+        }
+        .ocr-laser-line {
+            position: absolute; left: 0; right: 0; height: 3px;
+            background: linear-gradient(to right, transparent, var(--primary), var(--secondary), transparent);
+            box-shadow: 0 0 10px var(--primary); top: 0%; display: none;
+            z-index: 5;
+        }
+        .ocr-laser-line.active {
+            display: block; animation: laserSweep 2s ease-in-out infinite;
+        }
+        @keyframes laserSweep {
+            0% { top: 0%; }
+            50% { top: 100%; }
+            100% { top: 0%; }
+        }
+        .ocr-list-item {
+            background: #141724; border: 1px solid var(--border);
+            border-radius: 8px; padding: 10px 12px; display: flex;
+            justify-content: space-between; align-items: center; font-size: 0.78rem;
+            opacity: 0; transform: translateY(8px); transition: all 0.3s;
+        }
+        .ocr-list-item.active { opacity: 1; transform: none; }
+        .ocr-txt { font-weight: 500; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 140px; }
+
+        /* Chapter 5: CSV Batch Screen */
+        .csv-screen {
+            display: grid; grid-template-columns: 0.8fr 1.2fr; height: 100%;
+        }
+        .csv-left {
+            padding: 20px; border-right: 1px solid var(--border);
+            display: flex; flex-direction: column; justify-content: center; gap: 14px;
+        }
+        .csv-right {
+            padding: 20px; background: #0a0b10; display: flex;
+            flex-direction: column; justify-content: center; gap: 16px;
+        }
+        .progress-bar-wrap {
+            height: 10px; background: rgba(255,255,255,0.06);
+            border-radius: 99px; overflow: hidden; width: 100%; border: 1px solid var(--border);
+        }
+        .progress-bar-fill {
+            height: 100%; width: 0%; background: linear-gradient(90deg, var(--primary), var(--secondary));
+            transition: width 0.1s linear;
+        }
+        .progress-percentage {
+            font-size: 0.75rem; font-weight: 700; color: var(--primary);
+            text-align: right; margin-top: 4px;
+        }
+        
+        /* Stats dashboard & SVG Charts */
+        .chart-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+        }
+        .chart-box {
+            background: #111320; border: 1px solid var(--border);
+            border-radius: 10px; padding: 12px; display: flex; flex-direction: column;
+            align-items: center; gap: 10px;
+        }
+        .chart-title { font-size: 0.72rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+        
+        .mock-donut {
+            width: 70px; height: 70px; border-radius: 50%;
+            background: conic-gradient(
+                var(--green) 0% 60%,
+                var(--orange) 60% 85%,
+                var(--red) 85% 100%
+            );
+            position: relative; display: flex; align-items: center; justify-content: center;
+        }
+        .mock-donut::before {
+            content: ''; position: absolute; width: 44px; height: 44px;
+            background: #111320; border-radius: 50%;
+        }
+        .donut-val {
+            position: relative; z-index: 1; font-weight: 800; font-size: 0.8rem;
+            color: #fff; font-family: var(--font-heading);
+        }
+        
+        .mock-bars {
+            display: flex; flex-direction: column; gap: 6px; width: 100%;
+        }
+        .mock-bar-row {
+            display: flex; align-items: center; gap: 6px; font-size: 0.7rem;
+        }
+        .bar-lbl { width: 40px; text-align: right; color: var(--muted); font-weight: 600; }
+        .bar-track { flex: 1; height: 8px; background: rgba(255,255,255,0.05); border-radius: 4px; overflow: hidden; }
+        .bar-fill { height: 100%; background: var(--primary); width: 0%; transition: width 1.2s ease-out; }
+        .bar-val { width: 24px; color: #fff; font-weight: 600; }
+
+        /* Chapter 6: Feedback Loop Screen */
+        .feedback-screen {
+            padding: 20px; display: flex; flex-direction: column; justify-content: center; height: 100%; gap: 14px;
+        }
+        .feedback-table {
+            width: 100%; border-collapse: collapse; text-align: left;
+            background: #111320; border: 1px solid var(--border);
+            border-radius: 10px; overflow: hidden; display: block;
+        }
+        .feedback-table th, .feedback-table td {
+            padding: 10px 12px; font-size: 0.78rem; border-bottom: 1px solid var(--border);
+        }
+        .feedback-table th { background: #161828; color: var(--muted); font-weight: 600; }
+        .feedback-table td { color: #f1f5f9; }
+        .btn-flag {
+            background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3);
+            color: var(--red); padding: 4px 10px; border-radius: 6px;
+            font-size: 0.72rem; font-weight: 600; cursor: default;
+        }
+        .btn-flag.clicked {
+            background: var(--red); color: #fff; border-color: var(--red);
+        }
+        
+        .feedback-popup {
+            position: absolute; background: #1b1d2e; border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 8px; padding: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+            display: none; flex-direction: column; gap: 8px; z-index: 10;
+            width: 180px; left: 55%; top: 40%;
+        }
+        .feedback-popup.active { display: flex; }
+        .popup-select {
+            background: #11121c; border: 1px solid var(--border);
+            color: #fff; padding: 5px; border-radius: 4px; font-size: 0.75rem;
+        }
+        .popup-submit {
+            background: var(--primary); border: none; color: #fff;
+            padding: 6px; border-radius: 4px; font-weight: 600; font-size: 0.75rem;
+        }
+
+        /* Chapter 7: Outro Screen */
+        .outro-screen {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            height: 100%; text-align: center; gap: 20px;
+            background: radial-gradient(circle at center, #1b0e27 0%, #06070a 100%);
+            padding: 30px;
+        }
+        .outro-title {
+            font-family: var(--font-heading); font-size: 2.2rem; font-weight: 800;
+            color: #fff; letter-spacing: -0.02em;
+        }
+        .outro-title span {
+            background: linear-gradient(to right, #ec4899, #8b5cf6);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .outro-desc {
+            color: var(--muted); font-size: 1rem; max-width: 460px; line-height: 1.5;
+        }
+        .outro-buttons {
+            display: flex; gap: 12px; margin-top: 10px;
+        }
+        .outro-btn {
+            background: linear-gradient(135deg, var(--primary), #6d28d9);
+            color: #fff; padding: 8px 18px; border-radius: 8px;
+            font-weight: 600; text-decoration: none; font-size: 0.85rem;
+            box-shadow: 0 4px 15px rgba(139,92,246,0.3); transition: all 0.2s;
+        }
+        .outro-btn:hover {
+            transform: translateY(-1px); box-shadow: 0 6px 20px rgba(139,92,246,0.5);
+        }
+        .outro-btn-alt {
+            background: rgba(255,255,255,0.05); border: 1px solid var(--border);
+            color: #cbd5e1; padding: 8px 18px; border-radius: 8px;
+            font-weight: 600; text-decoration: none; font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+        .outro-btn-alt:hover {
+            background: rgba(255,255,255,0.1); color: #fff;
+        }
+
+        /* ── Interactive overdrive notice ── */
+        .overdrive-notice {
+            position: absolute; bottom: 8px; left: 8px;
+            background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.3);
+            color: var(--green); padding: 4px 10px; border-radius: 6px;
+            font-size: 0.7rem; font-weight: 700; pointer-events: none;
+            display: none; z-index: 40;
+        }
+        .overdrive-active .overdrive-notice { display: block; }
+
+        /* Fake mouse cursor animation */
+        .mock-cursor {
+            position: absolute; width: 14px; height: 18px;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23ffffff' stroke='%23000000' stroke-width='1.5'%3E%3Cpath d='M4.5 3V17L9.5 13L13.5 21L17 19L13 11.5L18.5 11.5L4.5 3Z'/%3E%3C/svg%3E");
+            background-size: contain; background-repeat: no-repeat;
+            z-index: 100; pointer-events: none; left: 50%; top: 50%;
+            transition: left 0.6s cubic-bezier(0.25, 0.8, 0.25, 1), top 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+
+        /* ── TOAST NOTIFICATION ── */
+        #toast {
+            position: absolute; bottom: 16px; right: 16px;
+            background: #141724; border: 1px solid rgba(16,185,129,0.3);
+            padding: 8px 16px; border-radius: 8px; display: none;
+            align-items: center; gap: 8px; font-size: 0.78rem;
+            color: var(--green); font-weight: 600; z-index: 99;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.4);
+            animation: slideInUp 0.3s ease;
+        }
+        @keyframes slideInUp {
+            from { transform: translateY(10px); opacity: 0; }
+            to { transform: none; opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Ambient background canvas -->
+    <div class="bg-canvas">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+    </div>
+
+    <div class="wrap">
+        <!-- HEADER -->
+        <header class="header">
+            <div class="brand">
+                <div class="brand-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="brand-name">Sabda<span>AI</span></h1>
+                    <div class="brand-sub">Interactive Feature Demo Video</div>
+                </div>
+            </div>
+            <a href="/" class="header-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+                </svg>
+                <span>Back to Dashboard</span>
+            </a>
+        </header>
+
+        <!-- MAIN LAYOUT -->
+        <main class="grid">
+            <!-- LEFT: Video simulator window -->
+            <div class="player-panel">
+                <div class="player-topbar">
+                    <div class="window-dots">
+                        <div class="dot dot-r"></div>
+                        <div class="dot dot-y"></div>
+                        <div class="dot dot-g"></div>
+                    </div>
+                    <div class="player-title">
+                        🎬 Sabda<span>AI</span> Demonstration
+                    </div>
+                    <div class="player-badge">LIVE SIMULATOR</div>
+                </div>
+
+                <!-- Viewport with contents -->
+                <div class="player-viewport" id="viewport">
+                    <div class="overdrive-notice">🎮 Manual Override Mode Active — Edit & click elements directly!</div>
+                    <div class="mock-cursor" id="cursor"></div>
+                    <div id="toast"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:14px;height:14px;"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> <span id="toast-text">Override saved successfully!</span></div>
+
+                    <!-- CHAPTER 1: INTRO -->
+                    <div class="screen-content active" id="screen-intro">
+                        <div class="intro-screen">
+                            <div class="intro-logo">Sabda<span>AI</span></div>
+                            <div class="intro-sub">Nepali Language Content Safety Shield & Moderator</div>
+                            <div class="intro-features">
+                                <span class="feature-pill">Real-time Filtering</span>
+                                <span class="feature-pill">Chrome Shield</span>
+                                <span class="feature-pill">OCR Scanning</span>
+                                <span class="feature-pill">Feedback Loop</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- CHAPTER 2: SINGLE MODERATION -->
+                    <div class="screen-content" id="screen-single">
+                        <div class="mock-frame single-grid">
+                            <!-- Left: Form -->
+                            <div class="single-left">
+                                <div>
+                                    <div class="mock-title">Moderate a Comment</div>
+                                    <div class="mock-textarea-wrap">
+                                        <div class="mock-textarea" id="single-input"></div>
+                                        <div class="mock-danger-label">
+                                            <span id="single-danger-lbl">🟢 Safe</span>
+                                            <span id="single-danger-pct">0% danger</span>
+                                        </div>
+                                        <div class="mock-danger-bar">
+                                            <div class="mock-danger-fill" id="single-danger-fill"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mock-btn-row">
+                                    <button class="mock-btn-submit" id="single-submit">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:14px;height:14px"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/></svg>
+                                        <span id="single-btn-lbl">Moderate</span>
+                                    </button>
+                                </div>
+                            </div>
+                            <!-- Right: Result -->
+                            <div class="single-right">
+                                <div class="mock-title">Safety Verdict</div>
+                                <div class="mock-badge badge-normal" id="single-badge">NORMAL</div>
+                                <div class="mock-result-box">
+                                    <div class="mock-result-item">
+                                        <span class="mock-result-lbl">Confidence:</span>
+                                        <span class="mock-result-val" id="single-conf">100%</span>
+                                    </div>
+                                    <div class="mock-result-item" style="flex-direction:column; gap:4px;">
+                                        <span class="mock-result-lbl">Reason:</span>
+                                        <span class="mock-result-val" id="single-reason" style="font-weight:400;font-size:0.75rem;line-height:1.3">No safety violations detected.</span>
+                                    </div>
+                                </div>
+                                <div class="mock-sanitize-box" id="single-sanitize" style="opacity: 0; transition: opacity 0.3s;">
+                                    <span class="mock-sanitize-title">Polite Suggestion</span>
+                                    <span class="mock-sanitize-txt" id="single-sanitize-txt">---</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- CHAPTER 3: CHROME SHIELD -->
+                    <div class="screen-content" id="screen-extension">
+                        <div class="mock-frame ext-screen">
+                            <!-- Left: Social Feed -->
+                            <div class="mock-browser">
+                                <div class="browser-header">
+                                    <div style="display:flex;gap:4px"><span class="dot" style="width:6px;height:6px;background:#555"></span><span class="dot" style="width:6px;height:6px;background:#555"></span></div>
+                                    <div class="browser-url">https://instagram.com/p/nepali_post</div>
+                                </div>
+                                <div class="feed-post">
+                                    <div class="feed-author">nepal_travels</div>
+                                    <div class="feed-content">काठमाडौंको सुन्दर साँझ 🇳🇵 #visitnepal</div>
+                                    <div class="feed-comments">
+                                        <div class="feed-comment">
+                                            <span class="comment-user">ram_bahadur</span>
+                                            <span class="comment-text">अति सुन्दर दृश्य, असाध्यै मन पर्यो!</span>
+                                        </div>
+                                        <div class="feed-comment" id="ext-toxic-comment">
+                                            <span class="comment-user">troll_nepal</span>
+                                            <span class="comment-text" id="ext-toxic-txt">यो मुजी खाते मरोस् साला फटाहा</span>
+                                            <div class="censor-badge" id="censor-badge">🛡️ Censored by SabdaAI (Offensive)</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Right: Extension popup -->
+                            <div class="popup-wrap">
+                                <div class="popup-box">
+                                    <div class="popup-header">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2.5" style="width:16px;height:16px"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/></svg>
+                                        <span class="popup-logo">Sabda<span>AI</span> Shield</span>
+                                    </div>
+                                    <div class="popup-row">
+                                        <span class="popup-lbl">Safety Shield</span>
+                                        <label class="toggle-switch">
+                                            <input type="checkbox" id="ext-shield-toggle">
+                                            <span class="toggle-slider"></span>
+                                        </label>
+                                    </div>
+                                    <div class="popup-row">
+                                        <span class="popup-lbl">Blur Severity</span>
+                                        <span style="font-size:0.75rem;color:var(--secondary);font-weight:700">HIGH</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- CHAPTER 4: OCR SCREENSHOT -->
+                    <div class="screen-content" id="screen-ocr">
+                        <div class="mock-frame ocr-screen">
+                            <div class="ocr-left">
+                                <div class="mock-title">Screenshot OCR Analyzer</div>
+                                <div class="ocr-drop-box" id="ocr-drop-box">
+                                    <div class="ocr-laser-line" id="ocr-laser"></div>
+                                    <span id="ocr-drop-text" style="font-size:0.75rem;">Uploading screenshot...</span>
+                                    <!-- Simple mock image representation -->
+                                    <div class="ocr-mock-img" id="ocr-img" style="background:#1e2235;width:120px;height:70px;border-radius:4px;border:1px solid rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:4px">
+                                        <div style="width:80px;height:4px;background:rgba(255,255,255,0.2)"></div>
+                                        <div style="width:60px;height:4px;background:rgba(255,255,255,0.2)"></div>
+                                        <div style="width:70px;height:4px;background:rgba(255,255,255,0.2)"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="ocr-right">
+                                <div class="mock-title">Extracted & Checked Lines</div>
+                                <div class="ocr-list-item" id="ocr-item-1">
+                                    <span class="ocr-txt">यो मुजी पागल हो</span>
+                                    <span class="mock-badge badge-offensive" style="font-size:0.65rem;padding:2px 6px">OFFENSIVE</span>
+                                </div>
+                                <div class="ocr-list-item" id="ocr-item-2">
+                                    <span class="ocr-txt">कस्तो राम्रो गीत!</span>
+                                    <span class="mock-badge badge-normal" style="font-size:0.65rem;padding:2px 6px">NORMAL</span>
+                                </div>
+                                <div class="ocr-list-item" id="ocr-item-3">
+                                    <span class="ocr-txt">यसलाई घरबाट लखेट्नु पर्छ</span>
+                                    <span class="mock-badge badge-hateful" style="font-size:0.65rem;padding:2px 6px">HATEFUL</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- CHAPTER 5: CSV BATCH & CHARTS -->
+                    <div class="screen-content" id="screen-csv">
+                        <div class="mock-frame csv-screen">
+                            <div class="csv-left">
+                                <div class="mock-title">CSV Batch upload</div>
+                                <div class="ocr-drop-box" id="csv-drop-box" style="height:90px">
+                                    <span id="csv-drop-text" style="font-size:0.75rem;">comments_dataset.csv</span>
+                                </div>
+                                <div>
+                                    <div style="display:flex;justify-content:space-between;font-size:0.7rem;margin-bottom:2px;color:var(--muted)">
+                                        <span>Processing rows...</span>
+                                        <span id="csv-pct-lbl">0%</span>
+                                    </div>
+                                    <div class="progress-bar-wrap">
+                                        <div class="progress-bar-fill" id="csv-progress-fill"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="csv-right">
+                                <div class="mock-title">Batch Analytics</div>
+                                <div class="chart-grid">
+                                    <div class="chart-box">
+                                        <span class="chart-title">Safety Mix</span>
+                                        <div class="mock-donut">
+                                            <div class="donut-val">60%</div>
+                                        </div>
+                                        <div style="display:flex;gap:8px;font-size:0.6rem">
+                                            <span style="color:var(--green)">● Norm</span>
+                                            <span style="color:var(--orange)">● Off</span>
+                                            <span style="color:var(--red)">● Hate</span>
+                                        </div>
+                                    </div>
+                                    <div class="chart-box">
+                                        <span class="chart-title">Flagged Words</span>
+                                        <div class="mock-bars">
+                                            <div class="mock-bar-row">
+                                                <span class="bar-lbl">muji</span>
+                                                <div class="bar-track"><div class="bar-fill" id="bf-1"></div></div>
+                                                <span class="bar-val" id="bv-1">0</span>
+                                            </div>
+                                            <div class="mock-bar-row">
+                                                <span class="bar-lbl">sala</span>
+                                                <div class="bar-track"><div class="bar-fill" id="bf-2"></div></div>
+                                                <span class="bar-val" id="bv-2">0</span>
+                                            </div>
+                                            <div class="mock-bar-row">
+                                                <span class="bar-lbl">khate</span>
+                                                <div class="bar-track"><div class="bar-fill" id="bf-3"></div></div>
+                                                <span class="bar-val" id="bv-3">0</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- CHAPTER 6: FEEDBACK LOOP -->
+                    <div class="screen-content" id="screen-feedback">
+                        <div class="mock-frame feedback-screen">
+                            <div class="mock-title">Active Feedback Loop Overrides</div>
+                            
+                            <table class="feedback-table">
+                                <thead>
+                                    <tr>
+                                        <th>Comment text</th>
+                                        <th>AI Prediction</th>
+                                        <th>Correction</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>तपाईं मूर्ख हुनुहुन्छ</td>
+                                        <td><span class="mock-badge badge-normal" style="font-size:0.65rem;padding:2px 6px">NORMAL</span></td>
+                                        <td id="fb-corr-td">Normal</td>
+                                        <td><button class="btn-flag" id="fb-flag-btn">Flag Incorrect</button></td>
+                                    </tr>
+                                    <tr>
+                                        <td>यो सामग्री रमाइलो छ</td>
+                                        <td><span class="mock-badge badge-normal" style="font-size:0.65rem;padding:2px 6px">NORMAL</span></td>
+                                        <td>Normal</td>
+                                        <td><button class="btn-flag" style="opacity:0.5;cursor:default;">Flag</button></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            <div class="feedback-popup" id="fb-popup">
+                                <span style="font-size:0.72rem;font-weight:700;color:var(--primary)">Correct Classification</span>
+                                <select class="popup-select" id="fb-popup-select">
+                                    <option value="Offensive">Offensive</option>
+                                    <option value="Hateful">Hateful</option>
+                                </select>
+                                <button class="popup-submit" id="fb-popup-submit">Save Correction</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- CHAPTER 7: OUTRO -->
+                    <div class="screen-content" id="screen-outro">
+                        <div class="outro-screen">
+                            <h2 class="outro-title">Protect Your Communities with <span>SabdaAI</span></h2>
+                            <p class="outro-desc">Leveraging lightweight localized rulesets and Gemini AI fallback mechanisms for unparalleled Nepali content moderation.</p>
+                            <div class="outro-buttons">
+                                <a href="/" class="outro-btn">Open Main Dashboard</a>
+                                <a href="/admin" class="outro-btn-alt">Open Admin Panel</a>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- PLAYER BAR -->
+                <div class="player-controls">
+                    <!-- Progress track -->
+                    <div class="timeline-row">
+                        <div class="timeline-track-wrap" id="timeline-container">
+                            <div class="timeline-track" id="timeline-track">
+                                <div class="timeline-progress" id="timeline-progress"></div>
+                                <div class="timeline-handle" id="timeline-handle"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Controls layout -->
+                    <div class="controls-buttons">
+                        <div class="ctrl-left">
+                            <button class="ctrl-btn" id="play-btn">
+                                <svg id="play-icon" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M8 5v14l11-7z"/>
+                                </svg>
+                                <svg id="pause-icon" viewBox="0 0 24 24" fill="currentColor" style="display:none">
+                                    <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+                                </svg>
+                            </button>
+                            <button class="ctrl-btn" id="replay-btn">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                                </svg>
+                            </button>
+                            <div class="time-display">
+                                <span id="current-time-lbl">00:00</span> / <span id="duration-lbl">01:20</span>
+                            </div>
+                        </div>
+                        <div class="ctrl-right">
+                            <button class="speed-btn" id="speed-btn">1.0x</button>
+                            <div class="overdrive-wrap">
+                                <span>Manual Override</span>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="overdrive-toggle">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT: Chapters Navigation -->
+            <div class="sidebar">
+                <h3 class="sidebar-title">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                    </svg>
+                    <span>Demo Chapters</span>
+                </h3>
+                <div class="chapter-list">
+                    <div class="chapter-card active" data-chapter="0">
+                        <div class="chapter-meta">
+                            <span class="chapter-num">Chapter 1</span>
+                            <span class="chapter-time">0:00</span>
+                        </div>
+                        <span class="chapter-name">Introduction</span>
+                        <p class="chapter-desc">SabdaAI Nepali Safety Moderator core overview.</p>
+                    </div>
+                    <div class="chapter-card" data-chapter="1">
+                        <div class="chapter-meta">
+                            <span class="chapter-num">Chapter 2</span>
+                            <span class="chapter-time">0:10</span>
+                        </div>
+                        <span class="chapter-name">Single Input Analysis</span>
+                        <p class="chapter-desc">Insults analysis and AI sanitization suggestion.</p>
+                    </div>
+                    <div class="chapter-card" data-chapter="2">
+                        <div class="chapter-meta">
+                            <span class="chapter-num">Chapter 3</span>
+                            <span class="chapter-time">0:30</span>
+                        </div>
+                        <span class="chapter-name">Chrome Safety Shield</span>
+                        <p class="chapter-desc">Censoring comments on-the-fly inside web browsers.</p>
+                    </div>
+                    <div class="chapter-card" data-chapter="3">
+                        <div class="chapter-meta">
+                            <span class="chapter-num">Chapter 4</span>
+                            <span class="chapter-time">0:50</span>
+                        </div>
+                        <span class="chapter-name">Screenshot OCR scan</span>
+                        <p class="chapter-desc">Extracting comment texts directly from images.</p>
+                    </div>
+                    <div class="chapter-card" data-chapter="4">
+                        <div class="chapter-meta">
+                            <span class="chapter-num">Chapter 5</span>
+                            <span class="chapter-time">0:65</span>
+                        </div>
+                        <span class="chapter-name">CSV Batch Analytics</span>
+                        <p class="chapter-desc">Processing bulk datasets and displaying visual charts.</p>
+                    </div>
+                    <div class="chapter-card" data-chapter="5">
+                        <div class="chapter-meta">
+                            <span class="chapter-num">Chapter 6</span>
+                            <span class="chapter-time">0:80</span>
+                        </div>
+                        <span class="chapter-name">Feedback Loop Override</span>
+                        <p class="chapter-desc">Reporting incorrect verdicts and training corrections.</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- PLAYBACK JAVASCRIPT LOGIC -->
+    <script>
+        // Chapter timings configurations (in seconds)
+        const chapters = [
+            { id: 'intro', start: 0, end: 10, selector: 'screen-intro' },
+            { id: 'single', start: 10, end: 30, selector: 'screen-single' },
+            { id: 'extension', start: 30, end: 50, selector: 'screen-extension' },
+            { id: 'ocr', start: 50, end: 65, selector: 'screen-ocr' },
+            { id: 'csv', start: 65, end: 80, selector: 'screen-csv' },
+            { id: 'feedback', start: 80, end: 90, selector: 'screen-feedback' }
+        ];
+
+        const duration = 90; // total duration in seconds
+        let currentTime = 0;
+        let isPlaying = false;
+        let speed = 1.0;
+        let overdrive = false;
+        let animationFrameId = null;
+        let lastTime = 0;
+
+        // Elements
+        const viewport = document.getElementById('viewport');
+        const playBtn = document.getElementById('play-btn');
+        const playIcon = document.getElementById('play-icon');
+        const pauseIcon = document.getElementById('pause-icon');
+        const replayBtn = document.getElementById('replay-btn');
+        const currentTimeLbl = document.getElementById('current-time-lbl');
+        const durationLbl = document.getElementById('duration-lbl');
+        const timelineProgress = document.getElementById('timeline-progress');
+        const timelineHandle = document.getElementById('timeline-handle');
+        const timelineContainer = document.getElementById('timeline-container');
+        const speedBtn = document.getElementById('speed-btn');
+        const overdriveToggle = document.getElementById('overdrive-toggle');
+        const cursor = document.getElementById('cursor');
+        const chapterCards = document.querySelectorAll('.chapter-card');
+        const toast = document.getElementById('toast');
+        const toastText = document.getElementById('toast-text');
+
+        // Initial setup
+        durationLbl.textContent = formatTime(duration);
+
+        // Add ticks for chapters on the timeline
+        chapters.forEach(c => {
+            if (c.start > 0) {
+                const tick = document.createElement('div');
+                tick.className = 'chapter-tick';
+                tick.style.left = `${(c.start / duration) * 100}%`;
+                document.getElementById('timeline-track').appendChild(tick);
+            }
+        });
+
+        // Event Listeners
+        playBtn.addEventListener('click', togglePlay);
+        replayBtn.addEventListener('click', replay);
+        speedBtn.addEventListener('click', changeSpeed);
+        overdriveToggle.addEventListener('change', toggleOverdrive);
+
+        timelineContainer.addEventListener('mousedown', (e) => {
+            scrub(e);
+            document.addEventListener('mousemove', scrub);
+            document.addEventListener('mouseup', () => {
+                document.removeEventListener('mousemove', scrub);
+            });
+        });
+
+        chapterCards.forEach(card => {
+            card.addEventListener('click', () => {
+                const idx = parseInt(card.dataset.chapter);
+                jumpTo(chapters[idx].start);
+            });
+        });
+
+        // Overdrive UI bindings (lets users interact with buttons in viewport)
+        document.getElementById('single-submit').addEventListener('click', () => {
+            if (!overdrive) return;
+            triggerSingleAnalysisManual();
+        });
+        document.getElementById('ext-shield-toggle').addEventListener('change', (e) => {
+            if (!overdrive) return;
+            toggleExtensionShieldManual(e.target.checked);
+        });
+        document.getElementById('fb-flag-btn').addEventListener('click', () => {
+            if (!overdrive) return;
+            document.getElementById('fb-flag-btn').classList.add('clicked');
+            document.getElementById('fb-popup').classList.add('active');
+        });
+        document.getElementById('fb-popup-submit').addEventListener('click', () => {
+            if (!overdrive) return;
+            const sel = document.getElementById('fb-popup-select').value;
+            document.getElementById('fb-corr-td').textContent = sel;
+            document.getElementById('fb-popup').classList.remove('active');
+            showToast("Saved feedback override successfully!");
+        });
+
+        // Toggle playback
+        function togglePlay() {
+            if (isPlaying) {
+                pause();
+            } else {
+                play();
+            }
+        }
+
+        function play() {
+            if (overdrive) {
+                overdriveToggle.checked = false;
+                toggleOverdrive();
+            }
+            isPlaying = true;
+            playIcon.style.display = 'none';
+            pauseIcon.style.display = 'block';
+            lastTime = performance.now();
+            animationFrameId = requestAnimationFrame(tick);
+        }
+
+        function pause() {
+            isPlaying = false;
+            playIcon.style.display = 'block';
+            pauseIcon.style.display = 'none';
+            cancelAnimationFrame(animationFrameId);
+        }
+
+        function replay() {
+            jumpTo(0);
+            play();
+        }
+
+        function changeSpeed() {
+            if (speed === 1.0) {
+                speed = 1.5;
+            } else if (speed === 1.5) {
+                speed = 2.0;
+            } else {
+                speed = 1.0;
+            }
+            speedBtn.textContent = `${speed.toFixed(1)}x`;
+        }
+
+        function toggleOverdrive() {
+            overdrive = overdriveToggle.checked;
+            if (overdrive) {
+                pause();
+                viewport.classList.add('overdrive-active');
+                cursor.style.display = 'none';
+                // Unlock input field in viewport
+                const inputEl = document.getElementById('single-input');
+                inputEl.contentEditable = "true";
+                inputEl.style.border = "1px solid var(--primary)";
+                inputEl.focus();
+            } else {
+                viewport.classList.remove('overdrive-active');
+                cursor.style.display = 'block';
+                const inputEl = document.getElementById('single-input');
+                inputEl.contentEditable = "false";
+                inputEl.style.border = "none";
+            }
+        }
+
+        function jumpTo(timeSecs) {
+            currentTime = Math.max(0, Math.min(duration, timeSecs));
+            updateUI();
+        }
+
+        function scrub(e) {
+            const rect = timelineContainer.getBoundingClientRect();
+            const pct = (e.clientX - rect.left) / rect.width;
+            jumpTo(pct * duration);
+        }
+
+        // Timer Tick
+        function tick(now) {
+            if (!isPlaying) return;
+            const delta = (now - lastTime) / 1000 * speed;
+            lastTime = now;
+            
+            currentTime += delta;
+            if (currentTime >= duration) {
+                currentTime = duration;
+                pause();
+            }
+            
+            updateUI();
+            if (isPlaying) {
+                animationFrameId = requestAnimationFrame(tick);
+            }
+        }
+
+        // Update Viewport & Player HUD
+        function updateUI() {
+            currentTimeLbl.textContent = formatTime(currentTime);
+            const pct = (currentTime / duration) * 100;
+            timelineProgress.style.width = `${pct}%`;
+            timelineHandle.style.left = `${pct}%`;
+
+            // Identify current chapter
+            let currentChapterIdx = 0;
+            chapters.forEach((c, idx) => {
+                if (currentTime >= c.start && currentTime < c.end) {
+                    currentChapterIdx = idx;
+                }
+            });
+
+            // Update chapter list highlight
+            chapterCards.forEach((c, idx) => {
+                if (idx === currentChapterIdx) {
+                    c.classList.add('active');
+                } else {
+                    c.classList.remove('active');
+                }
+            });
+
+            // Show active screen
+            const activeChapter = chapters[currentChapterIdx];
+            chapters.forEach(c => {
+                const el = document.getElementById(c.selector);
+                if (c.id === activeChapter.id) {
+                    el.classList.add('active');
+                } else {
+                    el.classList.remove('active');
+                }
+            });
+
+            // Run chapter simulations if not in overdrive
+            if (!overdrive) {
+                runSimulation(activeChapter.id, currentTime - activeChapter.start);
+            }
+        }
+
+        function formatTime(secs) {
+            const m = Math.floor(secs / 60).toString().padStart(2, '0');
+            const s = Math.floor(secs % 60).toString().padStart(2, '0');
+            return `${m}:${s}`;
+        }
+
+        function showToast(txt) {
+            toastText.textContent = txt;
+            toast.style.display = 'flex';
+            setTimeout(() => { toast.style.display = 'none'; }, 2500);
+        }
+
+        /* ── SIMULATION ANIMATIONS ENGINE ── */
+        function runSimulation(chapterId, offset) {
+            // Reset cursor styling
+            cursor.style.transform = 'none';
+
+            if (chapterId === 'intro') {
+                // Intro: cursor centers and pulses
+                moveCursor(50, 50);
+            }
+            
+            else if (chapterId === 'single') {
+                // Duration: 20 seconds.
+                // 0-8s: Types comment
+                // 8-10s: Cursor moves to submit and clicks
+                // 10-12s: Spinner loads
+                // 12-15s: Shows analysis
+                // 15-18s: Cursor clicks Sanitization
+                // 18-20s: Shows polite suggestion
+                
+                const comment = "यो मुजी भिडियो हेरेर मेरो समय खेर गयो, साला फटाहा खाते!";
+                const inputEl = document.getElementById('single-input');
+                const fillEl = document.getElementById('single-danger-fill');
+                const lblEl = document.getElementById('single-danger-lbl');
+                const pctEl = document.getElementById('single-danger-pct');
+                const submitEl = document.getElementById('single-submit');
+                const badgeEl = document.getElementById('single-badge');
+                const confEl = document.getElementById('single-conf');
+                const reasonEl = document.getElementById('single-reason');
+                const sanitizeEl = document.getElementById('single-sanitize');
+                const sanitizeTxtEl = document.getElementById('single-sanitize-txt');
+
+                if (offset < 8) {
+                    // Typing phase
+                    const typedLen = Math.floor((offset / 8) * comment.length);
+                    const currentTypedText = comment.substring(0, typedLen);
+                    inputEl.textContent = currentTypedText;
+                    
+                    // Animate danger meter
+                    const pct = Math.floor((offset / 8) * 98);
+                    fillEl.style.width = `${pct}%`;
+                    pctEl.textContent = `${pct}% danger`;
+                    if (pct < 30) {
+                        fillEl.style.background = 'var(--green)';
+                        lblEl.textContent = '🟢 Safe';
+                        lblEl.style.color = 'var(--green)';
+                    } else if (pct < 70) {
+                        fillEl.style.background = 'var(--orange)';
+                        lblEl.textContent = '🟡 Warning';
+                        lblEl.style.color = 'var(--orange)';
+                    } else {
+                        fillEl.style.background = 'var(--red)';
+                        lblEl.textContent = '🔴 Critical';
+                        lblEl.style.color = 'var(--red)';
+                    }
+                    
+                    // Reset analysis view
+                    badgeEl.className = "mock-badge badge-normal";
+                    badgeEl.textContent = "NORMAL";
+                    confEl.textContent = "100%";
+                    reasonEl.textContent = "No safety violations detected.";
+                    sanitizeEl.style.opacity = '0';
+                    submitEl.style.opacity = '1';
+                    document.getElementById('single-btn-lbl').textContent = "Moderate";
+                    moveCursor(40, 45); // hover over input
+                } 
+                else if (offset >= 8 && offset < 10) {
+                    // Move to submit button
+                    inputEl.textContent = comment;
+                    fillEl.style.width = `98%`;
+                    fillEl.style.background = 'var(--red)';
+                    lblEl.textContent = '🔴 Critical';
+                    lblEl.style.color = 'var(--red)';
+                    pctEl.textContent = `98% danger`;
+                    
+                    moveCursor(42, 90); // submit button coordinates inside frame
+                } 
+                else if (offset >= 10 && offset < 12) {
+                    // Loading phase
+                    moveCursor(42, 90);
+                    document.getElementById('single-btn-lbl').textContent = "Analyzing...";
+                    submitEl.style.opacity = '0.7';
+                }
+                else if (offset >= 12 && offset < 15) {
+                    // Show result
+                    submitEl.style.opacity = '1';
+                    document.getElementById('single-btn-lbl').textContent = "Moderate";
+                    
+                    badgeEl.className = "mock-badge badge-offensive";
+                    badgeEl.textContent = "OFFENSIVE";
+                    confEl.textContent = "94%";
+                    reasonEl.textContent = "Contains multiple vulgar terms ('muji', 'sala', 'khate') and slang insults.";
+                    
+                    moveCursor(80, 50); // move to right card
+                }
+                else if (offset >= 15 && offset < 17) {
+                    // Move to sanitization / suggest clean action
+                    moveCursor(80, 80);
+                }
+                else if (offset >= 17) {
+                    // Show sanitized output
+                    sanitizeEl.style.opacity = '1';
+                    sanitizeTxtEl.textContent = "यो भिडियो हेरेर मेरो समय खेर गयो, राम्रोसँग बनाउनु होला।";
+                    moveCursor(80, 80);
+                }
+            }
+            
+            else if (chapterId === 'extension') {
+                // Duration: 20 seconds.
+                // 0-3s: Cursor moves to popup toggle
+                // 3-5s: Clicking toggle (checkbox checked)
+                // 5-8s: Sweep scanner laser
+                // 8-20s: Blur active, censor overlay active
+                
+                const toggle = document.getElementById('ext-shield-toggle');
+                const commentTxt = document.getElementById('ext-toxic-txt');
+                const censorBdg = document.getElementById('censor-badge');
+
+                if (offset < 3) {
+                    toggle.checked = false;
+                    commentTxt.classList.remove('blurred');
+                    censorBdg.classList.remove('active');
+                    moveCursor(70, 45); // hover browser area
+                }
+                else if (offset >= 3 && offset < 5) {
+                    // Move cursor to toggle button
+                    moveCursor(92, 50);
+                    if (offset > 4.2) {
+                        toggle.checked = true;
+                    }
+                }
+                else if (offset >= 5 && offset < 8) {
+                    toggle.checked = true;
+                    // Scanner sweep mockup (we can simulate cursor moving down comments)
+                    moveCursor(30, 60);
+                }
+                else if (offset >= 8) {
+                    toggle.checked = true;
+                    commentTxt.classList.add('blurred');
+                    censorBdg.classList.add('active');
+                    moveCursor(40, 70);
+                }
+            }
+            
+            else if (chapterId === 'ocr') {
+                // Duration: 15 seconds.
+                // 0-3s: Animate image file dragging in
+                // 3-5s: Move cursor to scan, laser sweeps
+                // 5-9s: Row 1 types, Row 2 types
+                // 9-15s: Row 3 types, results displayed
+                
+                const img = document.getElementById('ocr-img');
+                const laser = document.getElementById('ocr-laser');
+                const dropText = document.getElementById('ocr-drop-text');
+                const r1 = document.getElementById('ocr-item-1');
+                const r2 = document.getElementById('ocr-item-2');
+                const r3 = document.getElementById('ocr-item-3');
+
+                if (offset < 3) {
+                    img.classList.remove('active');
+                    laser.classList.remove('active');
+                    dropText.style.display = 'block';
+                    r1.classList.remove('active');
+                    r2.classList.remove('active');
+                    r3.classList.remove('active');
+                    // Drag cursor
+                    moveCursor(20, 20);
+                }
+                else if (offset >= 3 && offset < 5) {
+                    img.classList.add('active');
+                    dropText.style.display = 'none';
+                    laser.classList.add('active');
+                    moveCursor(35, 50);
+                }
+                else if (offset >= 5 && offset < 8) {
+                    laser.classList.remove('active');
+                    r1.classList.add('active');
+                    moveCursor(75, 40);
+                }
+                else if (offset >= 8 && offset < 11) {
+                    r1.classList.add('active');
+                    r2.classList.add('active');
+                    moveCursor(75, 60);
+                }
+                else if (offset >= 11) {
+                    r1.classList.add('active');
+                    r2.classList.add('active');
+                    r3.classList.add('active');
+                    moveCursor(75, 80);
+                }
+            }
+            
+            else if (chapterId === 'csv') {
+                // Duration: 15 seconds.
+                // 0-3s: Uploading CSV file
+                // 3-7s: Progress bar ticks from 0 to 100%
+                // 7-10s: Doughnut chart and bars render
+                // 10-15s: Charts fully filled
+                
+                const fill = document.getElementById('csv-progress-fill');
+                const pctLbl = document.getElementById('csv-pct-lbl');
+                const bf1 = document.getElementById('bf-1');
+                const bf2 = document.getElementById('bf-2');
+                const bf3 = document.getElementById('bf-3');
+                const bv1 = document.getElementById('bv-1');
+                const bv2 = document.getElementById('bv-2');
+                const bv3 = document.getElementById('bv-3');
+
+                if (offset < 3) {
+                    fill.style.width = '0%';
+                    pctLbl.textContent = '0%';
+                    bf1.style.width = '0%';
+                    bf2.style.width = '0%';
+                    bf3.style.width = '0%';
+                    bv1.textContent = '0';
+                    bv2.textContent = '0';
+                    bv3.textContent = '0';
+                    moveCursor(25, 40);
+                }
+                else if (offset >= 3 && offset < 7) {
+                    const progress = Math.min(100, Math.floor(((offset - 3) / 4) * 100));
+                    fill.style.width = `${progress}%`;
+                    pctLbl.textContent = `${progress}%`;
+                    moveCursor(25, 65);
+                }
+                else if (offset >= 7) {
+                    fill.style.width = '100%';
+                    pctLbl.textContent = '100%';
+                    
+                    // Fill charts
+                    bf1.style.width = '85%';
+                    bf2.style.width = '64%';
+                    bf3.style.width = '42%';
+                    
+                    bv1.textContent = '28';
+                    bv2.textContent = '17';
+                    bv3.textContent = '9';
+                    
+                    moveCursor(75, 55);
+                }
+            }
+            
+            else if (chapterId === 'feedback') {
+                // Duration: 10 seconds.
+                // 0-3s: Cursor moves to "Flag Incorrect" button
+                // 3-5s: Clicks "Flag Incorrect", popup appears
+                // 5-7s: Dropdown moves to "Hateful" and clicks submit
+                // 7-10s: Toast appears and popup closes
+                
+                const btn = document.getElementById('fb-flag-btn');
+                const popup = document.getElementById('fb-popup');
+                const select = document.getElementById('fb-popup-select');
+                const corrTd = document.getElementById('fb-corr-td');
+
+                if (offset < 3) {
+                    btn.classList.remove('clicked');
+                    popup.classList.remove('active');
+                    corrTd.textContent = 'Normal';
+                    moveCursor(35, 45);
+                }
+                else if (offset >= 3 && offset < 5) {
+                    moveCursor(80, 48); // flag button coordinates
+                    if (offset > 4.5) {
+                        btn.classList.add('clicked');
+                        popup.classList.add('active');
+                    }
+                }
+                else if (offset >= 5 && offset < 7) {
+                    moveCursor(65, 75); // select dropdown
+                    if (offset > 6.2) {
+                        select.value = "Hateful";
+                    }
+                }
+                else if (offset >= 7) {
+                    moveCursor(65, 88); // submit button coordinates
+                    if (offset > 7.5 && popup.classList.contains('active')) {
+                        popup.classList.remove('active');
+                        corrTd.textContent = 'Hateful';
+                        showToast("Correction saved to feedback.jsonl!");
+                    }
+                }
+            }
+        }
+
+        // Helper to animate mouse cursor
+        function moveCursor(xPercent, yPercent) {
+            const vWidth = viewport.clientWidth;
+            const vHeight = viewport.clientHeight;
+            
+            const targetX = (xPercent / 100) * vWidth;
+            const targetY = (yPercent / 100) * vHeight;
+            
+            cursor.style.left = `${targetX}px`;
+            cursor.style.top = `${targetY}px`;
+        }
+
+        // Manual controls logic (for Override Mode)
+        function triggerSingleAnalysisManual() {
+            const inputVal = document.getElementById('single-input').textContent.trim();
+            if (!inputVal) return;
+            
+            const badgeEl = document.getElementById('single-badge');
+            const confEl = document.getElementById('single-conf');
+            const reasonEl = document.getElementById('single-reason');
+            const sanitizeEl = document.getElementById('single-sanitize');
+            const sanitizeTxtEl = document.getElementById('single-sanitize-txt');
+
+            // Quick offline classification based on words
+            let label = "NORMAL";
+            let conf = 100;
+            let reason = "No offensive or hateful keywords detected.";
+            let clean = "";
+
+            if (inputVal.includes("मुजी") || inputVal.includes("muji") || inputVal.includes("साला")) {
+                label = "OFFENSIVE";
+                conf = 92;
+                reason = "Matched blacklisted offensive words from local lexicon.";
+                clean = "यो भिडियो हेरेर मेरो समय खेर गयो, राम्रोसँग बनाउनु होला।";
+            } else if (inputVal.includes("मार्छु") || inputVal.includes("लखेट्नु")) {
+                label = "HATEFUL";
+                conf = 95;
+                reason = "Matched critical threat/harassment triggers in Devanagari.";
+                clean = "म असहमत छु र यसको विरोध गर्दछु।";
+            }
+
+            badgeEl.textContent = label;
+            badgeEl.className = `mock-badge badge-${label.toLowerCase()}`;
+            confEl.textContent = `${conf}%`;
+            reasonEl.textContent = reason;
+
+            if (clean) {
+                sanitizeEl.style.opacity = '1';
+                sanitizeTxtEl.textContent = clean;
+            } else {
+                sanitizeEl.style.opacity = '0';
+            }
+            showToast("Comment processed offline!");
+        }
+
+        function toggleExtensionShieldManual(checked) {
+            const commentTxt = document.getElementById('ext-toxic-txt');
+            const censorBdg = document.getElementById('censor-badge');
+            if (checked) {
+                commentTxt.classList.add('blurred');
+                censorBdg.classList.add('active');
+                showToast("Safety Shield Activated!");
+            } else {
+                commentTxt.classList.remove('blurred');
+                censorBdg.classList.remove('active');
+                showToast("Safety Shield Deactivated!");
+            }
+        }
+    </script>
+</body>
+</html>

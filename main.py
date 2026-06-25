@@ -327,6 +327,10 @@ def home():
 def admin_page():
     return FileResponse("static/admin.html")
 
+@app.get("/demo")
+def demo_page():
+    return FileResponse("static/demo.html")
+
 
 # ─────────────────────────────────────────────────────────────
 # CONTRIBUTION PIPELINE
