@@ -166,6 +166,10 @@ styleEl.textContent = `
 `;
 document.head.appendChild(styleEl);
 
+// High-signal English words/phrases that must always be scanned regardless
+// of whether the text contains Devanagari or romanized Nepali.
+const ENGLISH_SCAN_RE = /\b(kill|murder|stab|shoot|bomb|slaughter|exterminate|massacre|genocide|destroy|annihilate|hate|die|dead|threat|rape|lynch|hang|behead|terroris[mt]|white\s*supremac|nazi|fascist|i\s+will\s+kill|i\s+will\s+hurt|i\s+will\s+destroy|you\s+will\s+pay|watch\s+your\s+back|your\s+time\s+is\s+up|go\s+to\s+hell|rot\s+in\s+hell|burn\s+in\s+hell|end\s+yourself|kill\s+yourself|kys)\b/i;
+
 function findNepaliTextNodes(root = document.body) {
     if (!root) return [];
     const walker = document.createTreeWalker(
@@ -187,9 +191,14 @@ function findNepaliTextNodes(root = document.body) {
                     }
                 }
                 const val = node.nodeValue;
+                // Accept Devanagari text
                 const hasDevanagari = /[\u0900-\u097F]/.test(val);
+                // Accept romanized Nepali slang/keywords
                 const hasRomanizedNepali = /\b(tw|chha|parchha|parne|pani|hola|banauna|bhanne|bhaneko|maile|taile|timi|haru|haroo|muji|randi|gede|kera|garni|garne|gahro|hunchha|hudaina|bhandina|aaijha|khuru|pardaina|garchhu|garchu|garnu|hoina|haina|timro|hamro|tero|teri|bauko|aamachikne|machikne|chakka|puti|lado|kukur|khate|saala|gidi|muzi|bho|bhayo|hoki|kasto|kina|baje|dai|bhai|sathi|yaar|solti)\b/i.test(val);
-                if (hasDevanagari || hasRomanizedNepali) {
+                // NEW: Accept English text containing high-confidence hate/threat signals
+                const hasEnglishHate = ENGLISH_SCAN_RE.test(val);
+
+                if (hasDevanagari || hasRomanizedNepali || hasEnglishHate) {
                     return NodeFilter.FILTER_ACCEPT;
                 }
                 return NodeFilter.FILTER_SKIP;
@@ -204,6 +213,7 @@ function findNepaliTextNodes(root = document.body) {
     }
     return nodes;
 }
+
 
 function highlightNode(node, result) {
     const parent = node.parentNode;

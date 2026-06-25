@@ -10,6 +10,7 @@
   ],
   "host_permissions": [
     "https://www.instagram.com/*",
+    "https://github.com*/",
     "http://localhost:8000/*"
   ],
   "background": {

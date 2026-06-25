@@ -66,8 +66,8 @@ FEEDBACK_FILE = "feedback.jsonl"
 SUBMISSIONS_FILE = "submissions.jsonl"
 APPROVED_FILE = "approved_data.jsonl"
 
-# Admin password — change this to something strong before deploying!
-ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "sabdaai-admin-2024")
+# Admin password — change this !
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "anamol 1223")
 
 feedback_overrides = {}
 
@@ -517,4 +517,4 @@ def admin_stats(password: str = ""):
         with open(APPROVED_FILE, "r", encoding="utf-8") as f:
             approved_count = sum(1 for line in f if line.strip())
     counts["approved_data_entries"] = approved_count
-    return counts
+    return counts
