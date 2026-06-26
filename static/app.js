@@ -89,18 +89,79 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 // Feature 3: Live Danger Score
+const NEGATIONS = new Set([
+    // English
+    "not", "don't", "dont", "never", "no", "won't", "wont", 
+    "shouldn't", "shouldnt", "didn't", "didnt", "cannot", "cant", "can't",
+    "wouldn't", "wouldnt", "isn't", "isnt", "aren't", "arent", "neither", "nor",
+    // Nepali (Devanagari)
+    "न", "होइन", "छैन", "हुँदैन", "पर्दैन", "नगर्नु", "नगर्नुस्", "होइनन्", 
+    "नभए", "नगरे", "नाई", "नाइ",
+    // Nepali (Romanized)
+    "na", "hoina", "chaina", "chhaina", "hundaina", "hoinan", "hoinau", "pardaina",
+    "najala", "nagaru"
+]);
+
+const BENIGN_TARGETS = new Set([
+    // English
+    "it", "vibe", "vibes", "time", "times", "game", "games", "record", "records",
+    "presentation", "presentations", "show", "performance", "appetite", "pain",
+    "fever", "germ", "germs", "bacteria", "mosquito", "mosquitoes", "bug", "bugs",
+    "insect", "insects", "pest", "pests", "weed", "weeds", "joke", "jokes", "prank",
+    "bill", "bills", "light", "lights", "engine", "engines", "fire", "camp", "campfires",
+    "heat",
+    // Nepali (Devanagari)
+    "माछा", "लामखुट्टे", "समय", "कीरा", "उडुस", "कीटाणु", "झिंगा", "बिरुवा",
+    "घाँस", "भोक", "तिर्खा", "रोग", "ज्वरो", "पिडा", "पीडा", "खेल", "गीत",
+    "भिडियो", "बत्ती", "सडक", "बाटो", "आगो", "रुख", "रूख", "तनाव", "फोहोर",
+    "कसिङ्गर",
+    // Nepali (Romanized)
+    "machha", "macha", "lamkhutte", "samay", "kera", "udus", "kitanu", "khel",
+    "geet", "song", "video", "batti", "sadak", "bato", "aago", "rukh", "tanav",
+    "fohor"
+]);
+
+function _isDangerWordSafe(val, matchedWord) {
+    const tokens = val.toLowerCase().match(/[a-z0-9\u0900-\u097f]+/g) || [];
+    const isDevanagari = /[\u0900-\u097f]/.test(matchedWord);
+    const W = 3; // Context window size
+
+    for (let i = 0; i < tokens.length; i++) {
+        const token = tokens[i];
+        const isMatch = isDevanagari ? token.includes(matchedWord) : (token === matchedWord);
+        if (isMatch) {
+            const start = Math.max(0, i - W);
+            const end = Math.min(tokens.length, i + W + 1);
+            for (let j = start; j < end; j++) {
+                if (j === i) continue;
+                if (NEGATIONS.has(tokens[j]) || BENIGN_TARGETS.has(tokens[j])) {
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+
 // Smart word matcher: uses whole-word boundary for Latin script so "killed"
 // doesn't trigger "kill", but Devanagari uses substring (no \b support).
 function _dangerMatches(val, words) {
     return words.some(w => {
+        let matched = false;
         const isLatin = /^[a-z0-9 '\-]+$/.test(w);
         if (isLatin) {
             // Whole-word match only — avoids "killed" matching "kill"
-            return new RegExp('(?<![a-z0-9])' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?![a-z0-9])', 'i').test(val);
+            matched = new RegExp('(?<![a-z0-9])' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?![a-z0-9])', 'i').test(val);
         } else {
             // Devanagari: substring match (regex \b doesn't work for Unicode)
-            return val.includes(w);
+            matched = val.includes(w);
         }
+
+        if (matched) {
+            // If the matched word is safe in this context, ignore the match
+            return !_isDangerWordSafe(val, w);
+        }
+        return false;
     });
 }
 

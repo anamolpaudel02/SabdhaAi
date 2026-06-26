@@ -112,6 +112,34 @@ _OBLIGATION_SUFFIX_RE = re.compile(
 _ROOT_WINDOW = 30
 
 
+# General negations that modify context sentiment/intent
+_NEGATIONS = {
+    # English
+    "not", "don't", "dont", "never", "no", "won't", "wont", 
+    "shouldn't", "shouldnt", "didn't", "didnt", "cannot", "cant", "can't",
+    "wouldn't", "wouldnt", "isn't", "isnt", "aren't", "arent", "neither", "nor",
+    # Nepali
+    "न", "होइन", "छैन", "हुँदैन", "पर्दैन", "नगर्नु", "नगर्नुस्", "होइनन्", 
+    "नभए", "नगरे", "नाई", "नाइ"
+}
+
+# Benign/Non-human targets that indicate non-hateful threat verb contexts
+_BENIGN_TARGETS = {
+    # English
+    "it", "vibe", "vibes", "time", "times", "game", "games", "record", "records",
+    "presentation", "presentations", "show", "performance", "appetite", "pain",
+    "fever", "germ", "germs", "bacteria", "mosquito", "mosquitoes", "bug", "bugs",
+    "insect", "insects", "pest", "pests", "weed", "weeds", "joke", "jokes", "prank",
+    "bill", "bills", "light", "lights", "engine", "engines", "fire", "camp", "campfires",
+    "heat",
+    # Nepali
+    "माछा", "लामखुट्टे", "समय", "कीरा", "उडुस", "कीटाणु", "झिंगा", "बिरुवा",
+    "घाँस", "भोक", "तिर्खा", "रोग", "ज्वरो", "पिडा", "पीडा", "खेल", "गीत",
+    "भिडियो", "बत्ती", "सडक", "बाटो", "आगो", "रुख", "रूख", "तनाव", "फोहोर",
+    "कसिङ्गर"
+}
+
+
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
@@ -133,17 +161,49 @@ def _normalize(text: str) -> str:
 
 
 def _is_context_safe(text_lower: str, matched_term: str) -> bool:
-    """Check whether matched_term only appears inside a CONTEXT_SAFE exception."""
+    """Check whether matched_term only appears inside a CONTEXT_SAFE exception or a general safe context."""
+    # 1. Specific phrase exceptions check
     safe_phrases = CONTEXT_SAFE.get(matched_term, [])
-    if not safe_phrases:
-        return False
-    # If every occurrence of the term sits inside a known-safe phrase,
-    # treat it as safe. We approximate this by checking whether removing
-    # the safe phrases from the text removes all occurrences of the term.
-    stripped = text_lower
-    for safe in safe_phrases:
-        stripped = stripped.replace(safe.lower(), " ")
-    return matched_term not in stripped
+    if safe_phrases:
+        stripped = text_lower
+        for safe in safe_phrases:
+            stripped = stripped.replace(safe.lower(), " ")
+        if matched_term not in stripped:
+            return True
+
+    # 2. General context check (negations and benign targets)
+    # Extracts both Latin and Devanagari words/numbers
+    tokens = re.findall(r'[a-zA-Z0-9\u0900-\u097f]+', text_lower)
+    is_devanagari = bool(re.search(r'[\u0900-\u097f]', matched_term))
+    W = 3  # Window size to check (3 words before, 3 words after)
+    
+    # Pre-tokenize matched_term if it contains spaces (phrases)
+    has_spaces = " " in matched_term.strip()
+    matched_words = re.findall(r'[a-zA-Z0-9\u0900-\u097f]+', matched_term) if has_spaces else []
+    
+    for i, token in enumerate(tokens):
+        # Match check: handles roots/conjugations for Devanagari, and phrases/words
+        if is_devanagari:
+            if has_spaces:
+                is_match = any(w in token for w in matched_words)
+            else:
+                is_match = (matched_term in token)
+        else:
+            if has_spaces:
+                is_match = (token in matched_words)
+            else:
+                is_match = (token == matched_term)
+                
+        if is_match:
+            start = max(0, i - W)
+            end = min(len(tokens), i + W + 1)
+            context_tokens = tokens[start:i] + tokens[i+1:end]
+            
+            for ctx_tok in context_tokens:
+                if ctx_tok in _NEGATIONS or ctx_tok in _BENIGN_TARGETS:
+                    return True
+                    
+    return False
 
 
 def _transliterate(text_lower: str):
@@ -219,6 +279,10 @@ def _scan_verb_roots(text_lower: str) -> list[tuple[str, float]]:
             window = text_lower[pos: pos + len(root) + _ROOT_WINDOW]
             if _OBLIGATION_SUFFIX_RE.search(window):
                 label = f"{root}[+obligation]"
+                # Apply CONTEXT_SAFE to verb roots to avoid false positives (e.g. fishing)
+                if _is_context_safe(text_lower, root):
+                    pos = text_lower.find(root, pos + 1)
+                    continue
                 # Avoid duplicate if already caught by exact-word scan
                 if not any(h[0] == label for h in hits):
                     hits.append((label, score))

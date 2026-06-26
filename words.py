@@ -1102,6 +1102,8 @@ HATEFUL_WORDS = {
 
     #  English: Direct Threats 
     "kill":             0.90,
+    "killed":           0.85,
+    "killing":          0.85,
     "murder":           0.92,
     "slay":             0.85,
     "slaughter":        0.90,
@@ -1504,6 +1506,10 @@ HATEFUL_PHRASES = [
 # The classifier should transliterate before checking OFFENSIVE/HATEFUL dicts.
 
 ROMANIZED_MAP = {
+    # Fish / Fishing context helper
+    "machha":           "माछा",
+    "macha":            "माछा",
+
     # Threats
     "marchu":           "मार्छु",
     "marichhu":         "मार्छु",
@@ -1813,6 +1819,43 @@ CONTEXT_SAFE = {
         "नमर",              
         "मर्नु स्वाभाविक",  
     ],
+    "मार": [
+        "माछा मार",
+        "माछा मार्",
+    ],
+    "मार्छु": [
+        "माछा मार्छु",
+    ],
+    "मार्ने": [
+        "माछा मार्ने",
+    ],
+    "मारिदिन्छु": [
+        "माछा मारिदिन्छु",
+    ],
+    "मारिदिउँ": [
+        "माछा मारिदिउँ",
+    ],
+    "मारिहाल्छु": [
+        "माछा मारिहाल्छु",
+    ],
+    "मारौं": [
+        "माछा मारौं",
+    ],
+    "मारिदिऊ": [
+        "माछा मारिदिऊ",
+    ],
+    "मार्नेछ": [
+        "माछा मार्नेछ",
+    ],
+    "मारिनेछ": [
+        "माछा मारिनेछ",
+    ],
+    "मार्नु पर्छ": [
+        "माछा मार्नु पर्छ",
+    ],
+    "मार्नु हुन्छ": [
+        "माछा मार्नु हुन्छ",
+    ],
     "मारोस्": [
         "नमारोस्",          
     ],
@@ -1838,6 +1881,16 @@ CONTEXT_SAFE = {
         "kill time",
         "thriller kill",
         "overkill",
+    ],
+    "killed": [
+        "killed it",
+        "killed the vibe",
+        "killed time",
+    ],
+    "killing": [
+        "killing it",
+        "killing the vibe",
+        "killing time",
     ],
     "crazy": [
         "crazy good",

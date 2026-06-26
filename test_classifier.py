@@ -18,6 +18,22 @@ tests = [
     ("Future kill 3rd person", "मार्नेछ उसलाई"),
     ("Casual English kill context", "this will kill the vibe"),
     ("Offensive insult", "मूर्ख केटो"),
+    ("Fishing (Devanagari)", "म माछा मार्छु"),
+    ("Threat (Devanagari)", "म तिमीलाई मार्छु"),
+    ("Killed it (English)", "you killed it bro"),
+    ("Kill threat (English)", "i will kill you"),
+    ("Fishing (Romanized)", "ma machha marchu"),
+    ("Killed threat (English)", "i will get you killed"),
+    ("Bug context (English)", "kill the bug"),
+    ("Mosquito threat root (Nepali)", "लामखुट्टे मार्नु पर्छ"),
+    ("Negation (English)", "do not kill him"),
+    ("Negation (Nepali)", "तिमीलाई मार्ने होइन"),
+    ("Cut grass (Benign)", "घाँस काट्नु पर्छ"),
+    ("Cut person (Threat)", "तिमीलाई काट्नु पर्छ"),
+    ("Burn fire (Benign)", "आगो जलाउनु पर्दैन"),
+    ("Burn person (Threat)", "तिमीलाई जलाउनु पर्छ"),
+    ("Finish game (Benign)", "खेल खत्तम गर्छु"),
+    ("Finish person (Threat)", "तिमीलाई खत्म गर्छु"),
 ]
 
 for desc, text in tests:
